@@ -25,9 +25,9 @@ impl NexusState {
         }
     }
 
-    /// Returns the name of the current workspace according to the state.
+    /// Returns the name of the currently opened workspace according to the state.
     /// Can return a [`NexusError::InvalidState`] if the *opened group* is not among the *registered groups*.
-    pub fn workspace_name(&self) -> NexusResult<String> {
+    pub fn opened_workspace(&self) -> NexusResult<String> {
         let Some(group_name) = &self.opened_group else {
             return Ok(HUB_WORKSPACE.to_owned());
         };

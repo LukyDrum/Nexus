@@ -25,8 +25,8 @@ impl Overseer {
     pub async fn process_nexus_message(&mut self, message: NexusMessage) -> NexusResult<()> {
         match message {
             NexusMessage::SwitchWorkspace(number) => self.switch_workspace(number).await,
-            NexusMessage::SwitchGroup(name) => todo!(),
-            NexusMessage::SwitchToHub => todo!(),
+            NexusMessage::SwitchGroup(name) => self.switch_group(name).await,
+            NexusMessage::SwitchToHub => self.switch_to_hub().await,
         }
     }
 
@@ -53,14 +53,33 @@ impl Overseer {
         }
 
         // Perform the actual workspace switch in Hyprland
-        let new_workspace = self.state.workspace_name()?;
+        self.switch_to_opened_workspace().await
+    }
+
+    /// Switches the currently opened group.
+    /// If such group does not yet exist, then it will first create it.
+    async fn switch_group(&mut self, name: String) -> NexusResult<()> {
+        // Insert the group in case it does not exist yet and set it as the currently opened.
+        self.state.groups.entry(name.clone()).or_default();
+        self.state.opened_group = Some(name);
+
+        // Switch to the workspace in the newly opened group
+        self.switch_to_opened_workspace().await
+    }
+
+    /// Switches to the *Hub* group/workspace.
+    async fn switch_to_hub(&mut self) -> NexusResult<()> {
+        self.state.opened_group = None;
+
+        self.switch_to_opened_workspace().await
+    }
+
+    /// A utility function that dispatches a Hyprland action to switch to the currently opened workspace according to the state.
+    async fn switch_to_opened_workspace(&self) -> NexusResult<()> {
+        let new_workspace = self.state.opened_workspace()?;
         HyprlandAction::SwitchWorkspace(new_workspace)
             .dispatch()
             .await
             .map_err(NexusError::HyprlandError)
     }
-
-    fn switch_group(&mut self, name: String) {}
-
-    fn switch_to_hub(&mut self) {}
 }
