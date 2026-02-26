@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::types::WorkspaceNumber;
+
 /// The variants of this enum represent the possible messages that will be passed between
 /// the parts of the shell using the [`NexusSocket`](crate::NexusSocket).
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -10,7 +12,7 @@ pub enum NexusMessage {
     ///     - If it does not, then it will create it and switch to it.
     ///
     /// This mimics the behaviour of Hyprland.
-    SwitchWorkspace(u8),
+    SwitchWorkspace(WorkspaceNumber),
 
     /// Switches to a group defined by a string (the name of the group).
     /// Same as with the workspace, it does not matter if the group already exists or not:
