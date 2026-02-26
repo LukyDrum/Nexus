@@ -1,5 +1,7 @@
 use nexus_api::WorkspaceNumber;
 
+const DEFAULT_WORKSPACE: WorkspaceNumber = 1;
+
 #[derive(Clone, Debug)]
 pub(crate) struct Group {
     pub(super) current_workspace: WorkspaceNumber,
@@ -8,7 +10,7 @@ pub(crate) struct Group {
 impl Default for Group {
     fn default() -> Self {
         Self {
-            current_workspace: 1,
+            current_workspace: DEFAULT_WORKSPACE,
         }
     }
 }

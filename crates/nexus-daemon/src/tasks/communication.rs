@@ -17,11 +17,9 @@ pub(crate) async fn communication_task(overseer: Arc<RwLock<Overseer>>) -> anyho
                 stream.readable().await?;
 
                 match stream.try_read().await {
-                    Ok(Some(msg)) => {
-                        // Spawn task so that we can read more messages while the current one is being processed.
-                        tokio::spawn(process_message(overseer.clone(), msg));
-                    }
+                    Ok(Some(msg)) => process_message(&overseer, msg).await,
                     Ok(None) => continue,
+                    // TODO: Not bail?
                     Err(err) => bail!(err),
                 }
             }
@@ -30,6 +28,6 @@ pub(crate) async fn communication_task(overseer: Arc<RwLock<Overseer>>) -> anyho
     }
 }
 
-async fn process_message(overseer: Arc<RwLock<Overseer>>, message: NexusMessage) {
-    overseer.write().await.process_nexus_message(message);
+async fn process_message(overseer: &Arc<RwLock<Overseer>>, message: NexusMessage) {
+    let _ = overseer.write().await.process_nexus_message(message).await;
 }

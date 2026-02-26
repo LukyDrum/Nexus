@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
-use crate::overseer::{Group, error::NexusError};
+use crate::overseer::{
+    Group,
+    error::{InvalidState, NexusError, NexusResult},
+};
 
 const HUB_WORKSPACE: &str = "hub";
 
@@ -23,7 +26,8 @@ impl NexusState {
     }
 
     /// Returns the name of the current workspace according to the state.
-    pub fn workspace_name(&self) -> Result<String, NexusError> {
+    /// Can return a [`NexusError::InvalidState`] if the *opened group* is not among the *registered groups*.
+    pub fn workspace_name(&self) -> NexusResult<String> {
         let Some(group_name) = &self.opened_group else {
             return Ok(HUB_WORKSPACE.to_owned());
         };
@@ -32,27 +36,10 @@ impl NexusState {
             .groups
             .get(group_name)
             .map(|group| group.current_workspace)
-            .ok_or(NexusError::InvalidState)?;
+            .ok_or(NexusError::InvalidState(
+                InvalidState::OpenedGroupNotRegistered,
+            ))?;
 
         Ok(format!("{group_name}-{workspace_number}"))
-    }
-
-    // TO MOVE
-
-    pub fn switch_group(&mut self, group_name: impl Into<String>) {
-        let group_name = group_name.into();
-        self.groups
-            .entry(group_name.clone())
-            .or_insert_with(|| Group::default());
-
-        self.opened_group = Some(group_name);
-    }
-
-    pub fn switch_workspace(&mut self, workspace: u8) {
-        if let Some(group_name) = &self.opened_group
-            && let Some(group) = self.groups.get_mut(group_name)
-        {
-            group.current_workspace = workspace;
-        }
     }
 }
