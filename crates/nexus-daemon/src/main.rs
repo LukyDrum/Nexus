@@ -1,3 +1,4 @@
+mod hyprland;
 mod overseer;
 mod tasks;
 
