@@ -1,20 +1,16 @@
-mod command;
-
 use clap::Parser;
-use nexus_api::{NEXUS_COMMUNICATION_SOCKET, NexusMessage, NexusStream};
+use nexusctl::{NexusCommand, send_command};
 
-use crate::command::Cli;
+#[derive(Debug, clap::Parser)]
+#[command(version, about)]
+struct NexusCli {
+    #[command(subcommand)]
+    pub command: NexusCommand,
+}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let cli = Cli::parse();
+    let cli = NexusCli::parse();
 
-    let stream = NexusStream::<NexusMessage>::connect(NEXUS_COMMUNICATION_SOCKET).await?;
-
-    stream.writable().await?;
-    let command = cli.command;
-    let json = stream.try_write(&command.into()).await?;
-    dbg!(json);
-
-    Ok(())
+    send_command(cli.command).await
 }
