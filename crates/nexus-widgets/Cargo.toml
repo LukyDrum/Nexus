@@ -1,0 +1,8 @@
+[package]
+name = "nexus-widgets"
+description = "A simplified approach to building widgets using Iced framework."
+version = "0.1.0"
+edition = "2024"
+authors.workspace = true
+
+[dependencies]

@@ -277,6 +277,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "nexus-widgets"
+version = "0.1.0"
+
+[[package]]
 name = "nexusctl"
 version = "0.1.0"
 dependencies = [
