@@ -1,6 +1,7 @@
 [package]
 name = "nexus-api"
 description = "A definition/implementation of various types and function used through out the Nexus shell codebase."
+authors.workspace = true
 version = "0.1.0"
 edition = "2024"
 
