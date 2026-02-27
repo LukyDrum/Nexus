@@ -1,11 +1,11 @@
 use nexus_api::{NexusMessage, WorkspaceNumber};
 
 use crate::{
-    hyprland::HyprlandAction,
-    overseer::{
+    core::{
         NexusState,
         error::{InvalidState, NexusError, NexusResult},
     },
+    hyprland::HyprlandAction,
 };
 
 /// [`Overseer`] acts as the middle man between the tasks that listen for incoming messages, for Hyprland event and so on.

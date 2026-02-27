@@ -1,12 +1,12 @@
+mod core;
 mod hyprland;
-mod overseer;
 mod tasks;
 
 use std::sync::Arc;
 use tokio::{select, sync::RwLock};
 
 use crate::{
-    overseer::{NexusState, Overseer},
+    core::{NexusState, Overseer},
     tasks::communication_task,
 };
 

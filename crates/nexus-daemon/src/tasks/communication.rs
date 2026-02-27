@@ -4,7 +4,7 @@ use anyhow::bail;
 use nexus_api::{NEXUS_COMMUNICATION_SOCKET, NexusListener, NexusMessage};
 use tokio::sync::RwLock;
 
-use crate::overseer::Overseer;
+use crate::core::Overseer;
 
 /// A task that is responsible for communication with the rest of the Nexus ecosystem.
 /// It accepts connections to a communication unix socket and performs actions based on the incoming messages.

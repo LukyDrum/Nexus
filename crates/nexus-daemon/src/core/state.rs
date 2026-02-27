@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::overseer::{
+use crate::core::{
     Group,
     error::{InvalidState, NexusError, NexusResult},
 };

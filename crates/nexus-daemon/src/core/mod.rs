@@ -1,6 +1,5 @@
 mod error;
 mod group;
-#[expect(clippy::module_inception)]
 mod overseer;
 mod state;
 
