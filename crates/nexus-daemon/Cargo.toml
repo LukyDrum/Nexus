@@ -1,5 +1,6 @@
 [package]
 name = "nexus-daemon"
+description = "The brain of the Nexus shell."
 version = "0.1.0"
 edition = "2024"
 
