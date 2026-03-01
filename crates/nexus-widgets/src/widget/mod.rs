@@ -8,9 +8,13 @@ pub(crate) use message::LayerShellAppMessage;
 
 pub use runner::NexusWidgetRunner;
 
+use crate::settings::WidgetSettings;
+
 /// This trait should be implemented for iced apps that you want to run with [`NexusWidgetRunner`].
 pub trait NexusWidget<Message> {
     fn name(&self) -> String;
+
+    fn settings(&self) -> WidgetSettings;
 
     fn update(&mut self, message: Message);
 

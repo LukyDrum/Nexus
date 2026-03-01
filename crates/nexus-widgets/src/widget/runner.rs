@@ -2,8 +2,8 @@ use std::{fmt::Debug, marker::PhantomData};
 
 use iced::Element;
 
+use crate::NexusWidget;
 use crate::widget::LayerShellAppMessage;
-use crate::{NexusWidget, settings::WidgetSettings};
 
 pub struct NexusWidgetRunner<Widget, Message>
 where
@@ -18,8 +18,9 @@ where
     Widget: NexusWidget<Message> + Clone + 'static,
     Message: Clone + Debug + Send + 'static,
 {
-    pub fn run(widget: Widget, settings: WidgetSettings) -> Result<(), iced_layershell::Error> {
+    pub fn run(widget: Widget) -> Result<(), iced_layershell::Error> {
         let name = widget.name();
+        let settings = widget.settings();
 
         iced_layershell::application(
             move || Self {
