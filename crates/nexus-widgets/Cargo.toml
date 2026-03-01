@@ -6,3 +6,5 @@ edition = "2024"
 authors.workspace = true
 
 [dependencies]
+iced.workspace = true
+iced_layershell.workspace = true
