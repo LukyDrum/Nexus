@@ -1,13 +1,9 @@
 use std::{fmt::Debug, marker::PhantomData};
 
 use iced::Element;
-use iced_layershell::{
-    Settings,
-    reexport::{Anchor, Layer},
-    settings::{LayerShellSettings, StartMode},
-};
 
-use crate::{LayerShellAppMessage, NexusWidget};
+use crate::widget::LayerShellAppMessage;
+use crate::{NexusWidget, settings::WidgetSettings};
 
 pub struct NexusWidgetRunner<Widget, Message>
 where
@@ -22,18 +18,7 @@ where
     Widget: NexusWidget<Message> + Clone + 'static,
     Message: Clone + Debug + Send + 'static,
 {
-    pub fn run(widget: Widget) -> Result<(), iced_layershell::Error> {
-        let settings = Settings {
-            layer_settings: LayerShellSettings {
-                start_mode: StartMode::Active,
-                layer: Layer::Top,
-                anchor: Anchor::all(),
-                size: Some((600, 400)),
-                ..Default::default()
-            },
-            ..Default::default()
-        };
-
+    pub fn run(widget: Widget, settings: WidgetSettings) -> Result<(), iced_layershell::Error> {
         let name = widget.name();
 
         iced_layershell::application(
@@ -45,14 +30,13 @@ where
             Self::update,
             Self::view,
         )
-        .settings(settings)
+        .settings(settings.into())
         .run()
     }
 
     fn update(&mut self, message: LayerShellAppMessage<Message>) {
-        match message {
-            LayerShellAppMessage::AppMessage(message) => self.widget.update(message),
-            _ => {}
+        if let LayerShellAppMessage::AppMessage(message) = message {
+            self.widget.update(message);
         }
     }
 

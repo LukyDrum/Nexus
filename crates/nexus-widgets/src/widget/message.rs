@@ -4,6 +4,6 @@ use iced_layershell::to_layer_message;
 
 #[to_layer_message]
 #[derive(Clone, Debug)]
-pub enum LayerShellAppMessage<Msg: Clone + Debug + Send> {
+pub(crate) enum LayerShellAppMessage<Msg: Clone + Debug + Send> {
     AppMessage(Msg),
 }

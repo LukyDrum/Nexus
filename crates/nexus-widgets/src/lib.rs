@@ -1,3 +1,3 @@
 mod widget;
 
-pub use widget::{LayerShellAppMessage, NexusWidget, NexusWidgetRunner};
+pub use widget::{NexusWidget, NexusWidgetRunner, settings};
