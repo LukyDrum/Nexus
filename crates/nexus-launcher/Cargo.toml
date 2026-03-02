@@ -1,0 +1,11 @@
+[package]
+name = "nexus-launcher"
+version = "0.1.0"
+edition = "2024"
+authors.workspace = true
+
+[dependencies]
+fuzzy-matcher.workspace = true
+iced.workspace = true
+nexus-widgets = { path = "../nexus-widgets" }
+xdg.workspace = true
