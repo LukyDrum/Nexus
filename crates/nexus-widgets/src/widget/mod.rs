@@ -2,7 +2,7 @@ mod message;
 mod runner;
 pub mod settings;
 
-use iced::Element;
+use iced::{Element, Subscription, Task};
 
 pub(crate) use message::LayerShellAppMessage;
 
@@ -16,7 +16,15 @@ pub trait NexusWidget<Message> {
 
     fn settings(&self) -> WidgetSettings;
 
-    fn update(&mut self, message: Message);
+    fn update(&mut self, message: Message) -> Task<Message>;
 
     fn view(&'_ self) -> impl Into<Element<'_, Message>>;
+
+    fn subscription(&self) -> Subscription<Message> {
+        Subscription::none()
+    }
+
+    fn startup_task(&self) -> Task<Message> {
+        Task::none()
+    }
 }

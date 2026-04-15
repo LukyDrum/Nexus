@@ -1,6 +1,6 @@
 use std::{fmt::Debug, marker::PhantomData};
 
-use iced::Element;
+use iced::{Element, Subscription, Task};
 
 use crate::NexusWidget;
 use crate::widget::LayerShellAppMessage;
@@ -23,26 +23,46 @@ where
         let settings = widget.settings();
 
         iced_layershell::application(
-            move || Self {
-                widget: widget.clone(),
-                _phantom: PhantomData,
+            move || {
+                let task = widget.startup_task().map(LayerShellAppMessage::AppMessage);
+                (
+                    Self {
+                        widget: widget.clone(),
+                        _phantom: PhantomData,
+                    },
+                    task,
+                )
             },
             move || name.clone(),
             Self::update,
             Self::view,
         )
         .settings(settings.into())
+        .subscription(Self::subscription)
         .run()
     }
 
-    fn update(&mut self, message: LayerShellAppMessage<Message>) {
+    fn update(
+        &mut self,
+        message: LayerShellAppMessage<Message>,
+    ) -> Task<LayerShellAppMessage<Message>> {
         if let LayerShellAppMessage::AppMessage(message) = message {
-            self.widget.update(message);
+            self.widget
+                .update(message)
+                .map(LayerShellAppMessage::AppMessage)
+        } else {
+            Task::none()
         }
     }
 
     fn view(&'_ self) -> Element<'_, LayerShellAppMessage<Message>> {
         let element = self.widget.view().into();
-        element.map(|message| LayerShellAppMessage::AppMessage(message))
+        element.map(LayerShellAppMessage::AppMessage)
+    }
+
+    fn subscription(&self) -> Subscription<LayerShellAppMessage<Message>> {
+        self.widget
+            .subscription()
+            .map(LayerShellAppMessage::AppMessage)
     }
 }

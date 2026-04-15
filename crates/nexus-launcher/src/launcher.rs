@@ -2,8 +2,9 @@ use std::{fmt::Debug, sync::Arc};
 
 use fuzzy_matcher::{FuzzyMatcher, skim::SkimMatcherV2};
 use iced::{
-    Element,
-    widget::{Column, Scrollable, Text, column, text_input},
+    Color, Element, Length, Subscription, Task,
+    keyboard::{self, Key, key::Named},
+    widget::{self, Column, Scrollable, Text, column, text_input},
 };
 use nexus_widgets::{
     NexusWidget,
@@ -14,15 +15,27 @@ use crate::desktop::{DesktopEntry, read_desktop_entries};
 
 #[derive(Clone)]
 pub struct NexusLauncher {
+    input_id: widget::Id,
     input_content: String,
     fuzzy_matcher: Arc<SkimMatcherV2>,
     desktop_entries: Vec<DesktopEntry>,
+    latest_search_results: Vec<(String, usize)>,
+    selected_result: usize,
+}
+
+#[derive(Clone, Debug)]
+pub enum NavigationDirection {
+    Up,
+    Down,
 }
 
 #[derive(Clone, Debug)]
 pub enum LauncherMessage {
+    Nothing,
+    Exit,
     InputContentChanged(String),
     InputSubmit,
+    ListNavigation(NavigationDirection),
 }
 
 impl NexusWidget<LauncherMessage> for NexusLauncher {
@@ -37,41 +50,93 @@ impl NexusWidget<LauncherMessage> for NexusLauncher {
         }
     }
 
-    fn update(&mut self, message: LauncherMessage) {
+    fn update(&mut self, message: LauncherMessage) -> Task<LauncherMessage> {
         match message {
-            LauncherMessage::InputContentChanged(new_content) => self.input_content = new_content,
+            LauncherMessage::InputContentChanged(new_content) => {
+                self.input_content = new_content;
+                self.latest_search_results = self.search_results();
+                // Reset the index of the selected result
+                self.selected_result = 0;
+            }
             LauncherMessage::InputSubmit => todo!("Process submitted input"),
+            LauncherMessage::ListNavigation(direction) => {
+                self.selected_result = match direction {
+                    NavigationDirection::Up => self.selected_result.saturating_sub(1),
+                    NavigationDirection::Down => {
+                        (self.selected_result + 1).min(self.latest_search_results.len() - 1)
+                    }
+                };
+            }
+            LauncherMessage::Exit => return iced::exit(),
+            LauncherMessage::Nothing => {}
         }
+
+        // Keep the input in focus
+        widget::operation::focus(self.input_id.clone())
     }
 
     fn view(&'_ self) -> impl Into<Element<'_, LauncherMessage>> {
         let input = text_input("Command...", &self.input_content)
+            .id(self.input_id.clone())
             .on_input(LauncherMessage::InputContentChanged)
             .on_submit(LauncherMessage::InputSubmit);
 
         let search_results = {
-            let results = self
-                .search_results()
-                .into_iter()
-                .map(|result| Text::new(result).into());
+            let results =
+                self.latest_search_results
+                    .iter()
+                    .enumerate()
+                    .map(|(index, (name, _))| {
+                        let text = Text::new(name);
+                        if self.selected_result == index {
+                            text.color(Color::BLACK).into()
+                        } else {
+                            text.color(Color::from_rgb8(60, 60, 60)).into()
+                        }
+                    });
             let column = Column::with_children(results);
-            Scrollable::new(column)
+            Scrollable::new(column).width(Length::Fill)
         };
 
         column![input, search_results]
+    }
+
+    fn subscription(&self) -> Subscription<LauncherMessage> {
+        keyboard::listen().map(|event| match event {
+            keyboard::Event::KeyPressed {
+                key: Key::Named(Named::ArrowUp),
+                ..
+            } => LauncherMessage::ListNavigation(NavigationDirection::Up),
+            keyboard::Event::KeyPressed {
+                key: Key::Named(Named::ArrowDown),
+                ..
+            } => LauncherMessage::ListNavigation(NavigationDirection::Down),
+            keyboard::Event::KeyPressed {
+                key: Key::Named(Named::Escape),
+                ..
+            } => LauncherMessage::Exit,
+            _ => LauncherMessage::Nothing,
+        })
     }
 }
 
 impl NexusLauncher {
     pub fn new() -> Self {
-        NexusLauncher {
+        let mut launcher = NexusLauncher {
+            input_id: widget::Id::unique(),
             input_content: String::new(),
             fuzzy_matcher: Arc::new(SkimMatcherV2::default()),
             desktop_entries: read_desktop_entries(),
-        }
+            latest_search_results: Vec::new(),
+            selected_result: 0,
+        };
+        // Init the search results
+        launcher.latest_search_results = launcher.search_results();
+
+        launcher
     }
 
-    fn search_results(&self) -> Vec<&str> {
+    fn search_results(&self) -> Vec<(String, usize)> {
         fn clean(string: &str) -> String {
             string
                 .to_lowercase()
@@ -83,16 +148,20 @@ impl NexusLauncher {
         let mut scored_entries = self
             .desktop_entries
             .iter()
-            .filter_map(|entry| {
+            .enumerate()
+            .filter_map(|(index, entry)| {
                 let name = entry.name();
                 self.fuzzy_matcher
                     .fuzzy_match(&clean(name), &search)
-                    .map(|score| (name, score))
+                    .map(|score| ((name, index), score))
             })
             .collect::<Vec<_>>();
 
         scored_entries.sort_by_key(|(_, score)| *score);
 
-        scored_entries.into_iter().map(|(name, _)| name).collect()
+        scored_entries
+            .into_iter()
+            .map(|((name, index), _)| (name.to_string(), index))
+            .collect()
     }
 }
