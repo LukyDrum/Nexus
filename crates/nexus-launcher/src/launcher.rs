@@ -21,6 +21,7 @@ pub struct NexusLauncher {
     desktop_entries: Vec<DesktopEntry>,
     latest_search_results: Vec<(String, usize)>,
     selected_result: usize,
+    mode: Mode,
 }
 
 #[derive(Clone, Debug)]
@@ -36,6 +37,29 @@ pub enum LauncherMessage {
     InputContentChanged(String),
     InputSubmit,
     ListNavigation(NavigationDirection),
+}
+
+#[derive(Clone, Copy, Debug)]
+enum Mode {
+    AppRunner,
+    NexusGroup,
+    ActiveApp,
+    Math,
+    TerminalCommand,
+    QuickAction,
+}
+
+impl Mode {
+    fn from_symbol(symbol: &str) -> Self {
+        match symbol {
+            "#" => Self::NexusGroup,
+            "@" => Self::ActiveApp,
+            "=" => Self::Math,
+            ":" => Self::TerminalCommand,
+            ">" => Self::QuickAction,
+            _ => Self::AppRunner,
+        }
+    }
 }
 
 impl NexusWidget<LauncherMessage> for NexusLauncher {
@@ -58,7 +82,10 @@ impl NexusWidget<LauncherMessage> for NexusLauncher {
                 // Reset the index of the selected result
                 self.selected_result = 0;
             }
-            LauncherMessage::InputSubmit => todo!("Process submitted input"),
+            LauncherMessage::InputSubmit => {
+                self.on_submit();
+                return iced::exit();
+            }
             LauncherMessage::ListNavigation(direction) => {
                 self.selected_result = match direction {
                     NavigationDirection::Up => self.selected_result.saturating_sub(1),
@@ -69,6 +96,11 @@ impl NexusWidget<LauncherMessage> for NexusLauncher {
             }
             LauncherMessage::Exit => return iced::exit(),
             LauncherMessage::Nothing => {}
+        }
+
+        // Update mode
+        if let Some((symbol, _rest)) = self.input_content.split_at_checked(1) {
+            self.mode = Mode::from_symbol(symbol);
         }
 
         // Keep the input in focus
@@ -129,6 +161,7 @@ impl NexusLauncher {
             desktop_entries: read_desktop_entries(),
             latest_search_results: Vec::new(),
             selected_result: 0,
+            mode: Mode::AppRunner,
         };
         // Init the search results
         launcher.latest_search_results = launcher.search_results();
@@ -163,5 +196,28 @@ impl NexusLauncher {
             .into_iter()
             .map(|((name, index), _)| (name.to_string(), index))
             .collect()
+    }
+
+    fn on_submit(&self) {
+        match self.mode {
+            Mode::AppRunner => self.run_selected_app(),
+            Mode::NexusGroup => todo!("Nexus group"),
+            Mode::ActiveApp => todo!("Active app"),
+            Mode::TerminalCommand => todo!("Terminal command"),
+            Mode::QuickAction => todo!("Quick action"),
+            Mode::Math => {}
+        }
+    }
+
+    fn run_selected_app(&self) {
+        let Some((_name, index)) = self.latest_search_results.get(self.selected_result) else {
+            return;
+        };
+        let Some(entry) = self.desktop_entries.get(*index) else {
+            return;
+        };
+
+        #[expect(clippy::zombie_processes, reason = "We want to run it and forget it.")]
+        entry.run().expect("Failed to run desktop entry!");
     }
 }
