@@ -1474,6 +1474,7 @@ dependencies = [
  "iced_core",
  "log",
  "rustc-hash 2.1.1",
+ "tokio",
  "wasm-bindgen-futures",
  "wasmtimer",
 ]
@@ -2051,9 +2052,11 @@ dependencies = [
 name = "nexus-launcher"
 version = "0.1.0"
 dependencies = [
+ "calc_this",
  "fuzzy-matcher",
  "iced",
  "nexus-widgets",
+ "tokio",
  "xdg",
 ]
 

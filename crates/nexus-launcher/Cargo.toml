@@ -5,7 +5,9 @@ edition = "2024"
 authors.workspace = true
 
 [dependencies]
+calc_this = { path = "../calc_this" }
 fuzzy-matcher.workspace = true
-iced.workspace = true
+iced = { workspace = true, features = ["tokio"] }
 nexus-widgets = { path = "../nexus-widgets" }
+tokio = { workspace = true, features = ["time"] }
 xdg.workspace = true

@@ -1,4 +1,4 @@
-use std::{fmt::Debug, sync::Arc};
+use std::{fmt::Debug, sync::Arc, time::Duration};
 
 use fuzzy_matcher::{FuzzyMatcher, skim::SkimMatcherV2};
 use iced::{
@@ -19,8 +19,9 @@ pub struct NexusLauncher {
     input_content: String,
     fuzzy_matcher: Arc<SkimMatcherV2>,
     desktop_entries: Vec<DesktopEntry>,
-    latest_search_results: Vec<(String, usize)>,
+    list_results: Vec<(String, usize)>,
     selected_result: usize,
+
     mode: Mode,
 }
 
@@ -36,6 +37,7 @@ pub enum LauncherMessage {
     Exit,
     InputContentChanged(String),
     InputSubmit,
+    InputFocus,
     ListNavigation(NavigationDirection),
 }
 
@@ -60,6 +62,17 @@ impl Mode {
             _ => Self::AppRunner,
         }
     }
+
+    fn as_symbol(&self) -> &str {
+        match self {
+            Mode::AppRunner => "",
+            Mode::NexusGroup => "#",
+            Mode::ActiveApp => "@",
+            Mode::Math => "=",
+            Mode::TerminalCommand => ":",
+            Mode::QuickAction => ">",
+        }
+    }
 }
 
 impl NexusWidget<LauncherMessage> for NexusLauncher {
@@ -78,19 +91,38 @@ impl NexusWidget<LauncherMessage> for NexusLauncher {
         match message {
             LauncherMessage::InputContentChanged(new_content) => {
                 self.input_content = new_content;
-                self.latest_search_results = self.search_results();
                 // Reset the index of the selected result
                 self.selected_result = 0;
+
+                // Update mode
+                if let Some((symbol, _rest)) = self.input_content.split_at_checked(1) {
+                    self.mode = Mode::from_symbol(symbol);
+                }
+
+                // Mode specific update
+                match self.mode {
+                    Mode::AppRunner => {
+                        self.list_results = self.search_results();
+                    }
+                    Mode::NexusGroup => todo!(),
+                    Mode::ActiveApp => todo!(),
+                    Mode::Math => self.math_update(),
+                    Mode::QuickAction => todo!(),
+                    _ => {}
+                }
             }
             LauncherMessage::InputSubmit => {
                 self.on_submit();
                 return iced::exit();
             }
+            LauncherMessage::InputFocus => {
+                return widget::operation::focus(self.input_id.clone());
+            }
             LauncherMessage::ListNavigation(direction) => {
                 self.selected_result = match direction {
                     NavigationDirection::Up => self.selected_result.saturating_sub(1),
                     NavigationDirection::Down => {
-                        (self.selected_result + 1).min(self.latest_search_results.len() - 1)
+                        (self.selected_result + 1).min(self.list_results.len() - 1)
                     }
                 };
             }
@@ -98,13 +130,7 @@ impl NexusWidget<LauncherMessage> for NexusLauncher {
             LauncherMessage::Nothing => {}
         }
 
-        // Update mode
-        if let Some((symbol, _rest)) = self.input_content.split_at_checked(1) {
-            self.mode = Mode::from_symbol(symbol);
-        }
-
-        // Keep the input in focus
-        widget::operation::focus(self.input_id.clone())
+        Task::none()
     }
 
     fn view(&'_ self) -> impl Into<Element<'_, LauncherMessage>> {
@@ -114,18 +140,18 @@ impl NexusWidget<LauncherMessage> for NexusLauncher {
             .on_submit(LauncherMessage::InputSubmit);
 
         let search_results = {
-            let results =
-                self.latest_search_results
-                    .iter()
-                    .enumerate()
-                    .map(|(index, (name, _))| {
-                        let text = Text::new(name);
-                        if self.selected_result == index {
-                            text.color(Color::BLACK).into()
-                        } else {
-                            text.color(Color::from_rgb8(60, 60, 60)).into()
-                        }
-                    });
+            let results = self
+                .list_results
+                .iter()
+                .enumerate()
+                .map(|(index, (name, _))| {
+                    let text = Text::new(name);
+                    if self.selected_result == index {
+                        text.color(Color::BLACK).into()
+                    } else {
+                        text.color(Color::from_rgb8(60, 60, 60)).into()
+                    }
+                });
             let column = Column::with_children(results);
             Scrollable::new(column).width(Length::Fill)
         };
@@ -150,6 +176,14 @@ impl NexusWidget<LauncherMessage> for NexusLauncher {
             _ => LauncherMessage::Nothing,
         })
     }
+
+    fn startup_task(&self) -> Task<LauncherMessage> {
+        let future = async {
+            tokio::time::sleep(Duration::from_millis(100)).await;
+            LauncherMessage::InputFocus
+        };
+        Task::future(future)
+    }
 }
 
 impl NexusLauncher {
@@ -159,12 +193,12 @@ impl NexusLauncher {
             input_content: String::new(),
             fuzzy_matcher: Arc::new(SkimMatcherV2::default()),
             desktop_entries: read_desktop_entries(),
-            latest_search_results: Vec::new(),
+            list_results: Vec::new(),
             selected_result: 0,
             mode: Mode::AppRunner,
         };
         // Init the search results
-        launcher.latest_search_results = launcher.search_results();
+        launcher.list_results = launcher.search_results();
 
         launcher
     }
@@ -198,6 +232,18 @@ impl NexusLauncher {
             .collect()
     }
 
+    fn math_update(&mut self) {
+        let expr = self
+            .input_content
+            .trim_start_matches(Mode::Math.as_symbol());
+        let evaluated = calc_this::calc_this(expr, &[])
+            .map(|result| format!("= {result}"))
+            .unwrap_or("= undef.".to_owned());
+
+        self.list_results.clear();
+        self.list_results.push((evaluated, 0));
+    }
+
     fn on_submit(&self) {
         match self.mode {
             Mode::AppRunner => self.run_selected_app(),
@@ -210,7 +256,7 @@ impl NexusLauncher {
     }
 
     fn run_selected_app(&self) {
-        let Some((_name, index)) = self.latest_search_results.get(self.selected_result) else {
+        let Some((_name, index)) = self.list_results.get(self.selected_result) else {
             return;
         };
         let Some(entry) = self.desktop_entries.get(*index) else {
