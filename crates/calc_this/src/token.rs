@@ -1,10 +1,7 @@
 use std::fmt::Debug;
 
-#[derive(Debug, PartialEq, Eq)]
-pub(crate) enum Token<'a, T>
-where
-    T: PartialEq,
-{
+#[derive(Debug, PartialEq)]
+pub enum Token<'a> {
     Plus,
     Minus,
     Star,
@@ -12,6 +9,6 @@ where
     Caret,
     LeftParen,
     RightParen,
-    Number(T),
+    Number(f64),
     Ident(&'a str),
 }

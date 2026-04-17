@@ -1,14 +1,6 @@
-use std::{fmt::Debug, str::FromStr};
-
 use crate::{error::CalcError, token::Token};
 
-pub(crate) fn scan<'a, T>(
-    input: &'a str,
-) -> Result<Vec<Token<'a, T>>, CalcError<<T as FromStr>::Err>>
-where
-    T: FromStr + PartialEq,
-    T::Err: Debug,
-{
+pub(crate) fn scan<'a>(input: &'a str) -> Result<Vec<Token<'a>>, CalcError<'a>> {
     let mut input_iter = input.chars().enumerate().peekable();
     let mut tokens = Vec::new();
 
@@ -37,7 +29,7 @@ where
 
                 Token::Number(
                     input[start..end]
-                        .parse::<T>()
+                        .parse::<f64>()
                         .map_err(CalcError::ParseError)?,
                 )
             }
@@ -81,22 +73,22 @@ mod tests {
     #[test]
     fn integer_math() {
         let expr = "(5 + 42) * 10 / x - 5";
-        let tokens = scan::<i32>(expr).unwrap();
+        let tokens = scan(expr).unwrap();
 
         assert_eq!(
             tokens,
             vec![
                 Token::LeftParen,
-                Token::Number(5),
+                Token::Number(5.0),
                 Token::Plus,
-                Token::Number(42),
+                Token::Number(42.0),
                 Token::RightParen,
                 Token::Star,
-                Token::Number(10),
+                Token::Number(10.0),
                 Token::Slash,
                 Token::Ident("x"),
                 Token::Minus,
-                Token::Number(5),
+                Token::Number(5.0),
             ]
         );
     }
@@ -104,7 +96,7 @@ mod tests {
     #[test]
     fn floats() {
         let expr = "5.0 + 10";
-        let tokens = scan::<f32>(expr).unwrap();
+        let tokens = scan(expr).unwrap();
 
         assert_eq!(
             tokens,
@@ -115,14 +107,14 @@ mod tests {
     #[test]
     fn function() {
         let expr = "sin(42)";
-        let tokens = scan::<i32>(expr).unwrap();
+        let tokens = scan(expr).unwrap();
 
         assert_eq!(
             tokens,
             vec![
                 Token::Ident("sin"),
                 Token::LeftParen,
-                Token::Number(42),
+                Token::Number(42.0),
                 Token::RightParen,
             ]
         );
