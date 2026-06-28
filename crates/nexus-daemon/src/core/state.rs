@@ -1,11 +1,9 @@
 use std::collections::HashMap;
 
 use crate::core::{
-    Group,
+    DEFAULT_GROUP, Group,
     error::{InvalidState, NexusError, NexusResult},
 };
-
-const DEFAULT_GROUP: &str = "default";
 
 /// [`NexusState`] exists independent of Hyprland.
 /// It does not care itself if it is in coherent state with Hyprland.
@@ -37,6 +35,10 @@ impl NexusState {
                 InvalidState::OpenedGroupNotRegistered,
             ))?;
 
-        Ok(format!("{group_name}-{workspace_number}"))
+        if group_name.is_empty() {
+            Ok(workspace_number.to_string())
+        } else {
+            Ok(format!("{group_name}-{workspace_number}"))
+        }
     }
 }

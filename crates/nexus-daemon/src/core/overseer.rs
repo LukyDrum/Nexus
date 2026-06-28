@@ -2,7 +2,7 @@ use nexus_api::{NexusMessage, WorkspaceNumber};
 
 use crate::{
     core::{
-        NexusState,
+        DEFAULT_GROUP, NexusState,
         error::{InvalidState, NexusResult},
     },
     hyprland::HyprlandAction,
@@ -63,5 +63,29 @@ impl Overseer {
     fn switch_to_current_workspace(&self) -> NexusResult<HyprlandAction> {
         let new_workspace = self.state.current_workspace()?;
         Ok(HyprlandAction::SwitchWorkspace(new_workspace))
+    }
+
+    /* Bellow lay the implementation of handlers that react to changes in Hyprland */
+
+    /// Configures the inner state so that it reacted to the workspace change.
+    pub(crate) fn on_workspace_changed(&mut self, new_workspace: &str) {
+        // The new workspace should be in a format "<group>-<workspace number>"
+        let (group, number) = if let Some(group_and_number) = new_workspace
+            .rsplit_once('-')
+            .and_then(|(group, number)| number.parse().ok().map(|number| (group, number)))
+        {
+            group_and_number
+        } else {
+            // Lets try if it is only a number, in that case we can assume we are in the default group.
+            let Ok(number) = new_workspace.parse() else {
+                return;
+            };
+            (DEFAULT_GROUP, number)
+        };
+
+        self.state.current_group = group.to_owned();
+        if let Some(group) = self.state.groups.get_mut(group) {
+            group.current_workspace = number;
+        }
     }
 }

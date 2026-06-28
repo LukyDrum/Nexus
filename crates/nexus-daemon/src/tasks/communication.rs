@@ -29,9 +29,20 @@ pub(crate) async fn communication_task(overseer: Arc<RwLock<Overseer>>) -> anyho
 }
 
 async fn process_message(overseer: &RwLock<Overseer>, message: NexusMessage) {
-    if let Ok(action) = overseer.write().await.process_nexus_message(message)
-        && let Err(err) = action.dispatch().await
-    {
-        println!("Hyprland error: {err}");
+    dbg!(&message);
+
+    let action = match overseer.write().await.process_nexus_message(message) {
+        Ok(action) => action,
+        Err(err) => {
+            println!("Error: {err:?}");
+            return;
+        }
+    };
+
+    match action.dispatch().await {
+        Ok(()) => {}
+        Err(err) => {
+            println!("Error: {err}");
+        }
     }
 }

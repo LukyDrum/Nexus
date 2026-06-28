@@ -1,4 +1,4 @@
-use hyprland::dispatch::{Dispatch, DispatchType, WorkspaceIdentifierWithSpecial};
+use crate::hyprland;
 
 /// Variants of this enum represent the actions that Nexus could request from Hyprland.
 /// It should abstract away the Hyprland specifics and provide an easy interface for [`Overseer`](crate::overseer::Overseer)
@@ -9,13 +9,15 @@ pub(crate) enum HyprlandAction {
 }
 
 impl HyprlandAction {
-    pub async fn dispatch(self) -> hyprland::Result<()> {
+    pub async fn dispatch(self) -> anyhow::Result<()> {
         match self {
             HyprlandAction::SwitchWorkspace(workspace) => {
-                let workspace = WorkspaceIdentifierWithSpecial::Name(&workspace);
-                let dispatch_type = DispatchType::Workspace(workspace);
-                Dispatch::call_async(dispatch_type).await
+                let command =
+                    format!("hl.dispatch(hl.dsp.focus({{ workspace = \"name:{workspace}\" }}))");
+                hyprland::ctl_eval(command).await?;
             }
         }
+
+        Ok(())
     }
 }
