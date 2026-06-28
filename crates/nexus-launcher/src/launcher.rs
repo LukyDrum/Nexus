@@ -4,7 +4,11 @@ use fuzzy_matcher::{FuzzyMatcher, skim::SkimMatcherV2};
 use iced::{
     Color, Element, Length, Subscription, Task,
     keyboard::{self, Key, key::Named},
-    widget::{self, Column, Scrollable, Text, column, text_input},
+    widget::{
+        self, Column, Scrollable, Text, column,
+        operation::{AbsoluteOffset, scroll_to},
+        text_input,
+    },
 };
 use nexus_widgets::{
     NexusWidget,
@@ -12,6 +16,8 @@ use nexus_widgets::{
 };
 
 use crate::desktop::{DesktopEntry, read_desktop_entries};
+
+const ROW_HEIGHT: f32 = 40.0;
 
 #[derive(Clone)]
 pub struct NexusLauncher {
@@ -21,6 +27,7 @@ pub struct NexusLauncher {
     desktop_entries: Vec<DesktopEntry>,
     list_results: Vec<(String, usize)>,
     selected_result: usize,
+    scroll_id: widget::Id,
 
     mode: Mode,
 }
@@ -97,6 +104,8 @@ impl NexusWidget<LauncherMessage> for NexusLauncher {
                 // Update mode
                 if let Some((symbol, _rest)) = self.input_content.split_at_checked(1) {
                     self.mode = Mode::from_symbol(symbol);
+                } else {
+                    self.mode = Mode::AppRunner;
                 }
 
                 // Mode specific update
@@ -110,14 +119,14 @@ impl NexusWidget<LauncherMessage> for NexusLauncher {
                     Mode::QuickAction => todo!(),
                     _ => {}
                 }
+
+                Task::none()
             }
             LauncherMessage::InputSubmit => {
                 self.on_submit();
-                return iced::exit();
+                iced::exit()
             }
-            LauncherMessage::InputFocus => {
-                return widget::operation::focus(self.input_id.clone());
-            }
+            LauncherMessage::InputFocus => widget::operation::focus(self.input_id.clone()),
             LauncherMessage::ListNavigation(direction) => {
                 self.selected_result = match direction {
                     NavigationDirection::Up => self.selected_result.saturating_sub(1),
@@ -125,12 +134,19 @@ impl NexusWidget<LauncherMessage> for NexusLauncher {
                         (self.selected_result + 1).min(self.list_results.len() - 1)
                     }
                 };
-            }
-            LauncherMessage::Exit => return iced::exit(),
-            LauncherMessage::Nothing => {}
-        }
 
-        Task::none()
+                let offset = self.selected_result.saturating_sub(3);
+                scroll_to(
+                    self.scroll_id.clone(),
+                    AbsoluteOffset {
+                        x: 0.0,
+                        y: offset as f32 * ROW_HEIGHT,
+                    },
+                )
+            }
+            LauncherMessage::Exit => iced::exit(),
+            LauncherMessage::Nothing => Task::none(),
+        }
     }
 
     fn view(&'_ self) -> impl Into<Element<'_, LauncherMessage>> {
@@ -145,7 +161,7 @@ impl NexusWidget<LauncherMessage> for NexusLauncher {
                 .iter()
                 .enumerate()
                 .map(|(index, (name, _))| {
-                    let text = Text::new(name);
+                    let text = Text::new(name).height(ROW_HEIGHT);
                     if self.selected_result == index {
                         text.color(Color::BLACK).into()
                     } else {
@@ -153,7 +169,9 @@ impl NexusWidget<LauncherMessage> for NexusLauncher {
                     }
                 });
             let column = Column::with_children(results);
-            Scrollable::new(column).width(Length::Fill)
+            Scrollable::new(column)
+                .id(self.scroll_id.clone())
+                .width(Length::Fill)
         };
 
         column![input, search_results]
@@ -178,6 +196,7 @@ impl NexusWidget<LauncherMessage> for NexusLauncher {
     }
 
     fn startup_task(&self) -> Task<LauncherMessage> {
+        // Small hack to make the input focus from the start
         let future = async {
             tokio::time::sleep(Duration::from_millis(100)).await;
             LauncherMessage::InputFocus
@@ -195,6 +214,7 @@ impl NexusLauncher {
             desktop_entries: read_desktop_entries(),
             list_results: Vec::new(),
             selected_result: 0,
+            scroll_id: widget::Id::unique(),
             mode: Mode::AppRunner,
         };
         // Init the search results
