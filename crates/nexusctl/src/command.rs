@@ -10,7 +10,6 @@ pub enum NexusCommand {
 pub enum Selector {
     Workspace { number: WorkspaceNumber },
     Group { name: String },
-    Hub,
 }
 
 impl From<NexusCommand> for NexusMessage {
@@ -20,7 +19,6 @@ impl From<NexusCommand> for NexusMessage {
                 NexusMessage::SwitchWorkspace(number)
             }
             NexusCommand::Switch(Selector::Group { name }) => NexusMessage::SwitchGroup(name),
-            NexusCommand::Switch(Selector::Hub) => NexusMessage::SwitchToHub,
         }
     }
 }

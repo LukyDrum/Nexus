@@ -19,7 +19,4 @@ pub enum NexusMessage {
     ///     - If it does, then it will switch to the last used workspace in that group,
     ///     - If it does not, then it will create a new group and switch to workspace #1 in that group.
     SwitchGroup(String),
-
-    /// Switches to the special hub workspace which exists outside of the groups.
-    SwitchToHub,
 }

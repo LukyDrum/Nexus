@@ -23,11 +23,15 @@ pub(crate) async fn communication_task(overseer: Arc<RwLock<Overseer>>) -> anyho
                     Err(err) => bail!(err),
                 }
             }
-            Err(e) => println!("Failed to accept client: {:?}", e),
+            Err(err) => println!("Failed to accept client: {:?}", err),
         }
     }
 }
 
-async fn process_message(overseer: &Arc<RwLock<Overseer>>, message: NexusMessage) {
-    let _ = overseer.write().await.process_nexus_message(message).await;
+async fn process_message(overseer: &RwLock<Overseer>, message: NexusMessage) {
+    if let Ok(action) = overseer.write().await.process_nexus_message(message)
+        && let Err(err) = action.dispatch().await
+    {
+        println!("Hyprland error: {err}");
+    }
 }
