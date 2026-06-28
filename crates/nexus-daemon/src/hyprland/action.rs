@@ -6,6 +6,9 @@ use crate::hyprland;
 pub(crate) enum HyprlandAction {
     /// Performs a switch to a named workspace.
     SwitchWorkspace(String),
+
+    /// Moves the currently active window to a named workspace.
+    MoveActiveWindowToWorkspace(String),
 }
 
 impl HyprlandAction {
@@ -14,6 +17,12 @@ impl HyprlandAction {
             HyprlandAction::SwitchWorkspace(workspace) => {
                 let command =
                     format!("hl.dispatch(hl.dsp.focus({{ workspace = \"name:{workspace}\" }}))");
+                hyprland::ctl_eval(command).await?;
+            }
+            HyprlandAction::MoveActiveWindowToWorkspace(workspace) => {
+                let command = format!(
+                    "hl.dispatch(hl.dsp.window.move({{ workspace = \"name:{workspace}\" }}))"
+                );
                 hyprland::ctl_eval(command).await?;
             }
         }

@@ -1,6 +1,6 @@
 mod command;
 
-pub use command::{NexusCommand, Selector};
+pub use command::{NexusCommand, SpaceSelector};
 
 use nexus_api::{NEXUS_COMMUNICATION_SOCKET, NexusMessage, NexusStream};
 

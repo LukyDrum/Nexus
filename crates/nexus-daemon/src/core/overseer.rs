@@ -23,10 +23,16 @@ impl Overseer {
     /// This action needs yet to be called.
     /// By returning the action instead of calling it directly, we avoid holding a write lock for too long.
     pub fn process_nexus_message(&mut self, message: NexusMessage) -> NexusResult<HyprlandAction> {
-        match message {
-            NexusMessage::SwitchWorkspace(number) => self.switch_workspace(number),
-            NexusMessage::SwitchGroup(name) => self.switch_group(name),
-        }
+        Ok(match message {
+            NexusMessage::SwitchWorkspace(number) => self.switch_workspace(number)?,
+            NexusMessage::SwitchGroup(name) => self.switch_group(name)?,
+            NexusMessage::MoveActiveWindowToWorkspace(number) => {
+                self.move_active_window(self.state.name_for_current_workspace(number))
+            }
+            NexusMessage::MoveActiveWindowToNamedWorkspace(named_workspace) => {
+                self.move_active_window(named_workspace)
+            }
+        })
     }
 
     /* Bellow lay the implementations of the individual reactions */
@@ -57,6 +63,11 @@ impl Overseer {
 
         // Switch to the workspace in the newly opened group
         self.switch_to_current_workspace()
+    }
+
+    /// Moves the currently active window to a workspace in the current group with number `target_workspace`.
+    fn move_active_window(&mut self, target_workspace: String) -> HyprlandAction {
+        HyprlandAction::MoveActiveWindowToWorkspace(target_workspace)
     }
 
     /// A utility function that creates a Hyprland action to switch to the currently opened workspace according to the state.

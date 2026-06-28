@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use nexus_api::WorkspaceNumber;
+
 use crate::core::{
     DEFAULT_GROUP, Group,
     error::{InvalidState, NexusError, NexusResult},
@@ -35,10 +37,14 @@ impl NexusState {
                 InvalidState::OpenedGroupNotRegistered,
             ))?;
 
-        if group_name.is_empty() {
-            Ok(workspace_number.to_string())
+        Ok(self.name_for_current_workspace(workspace_number))
+    }
+
+    pub fn name_for_current_workspace(&self, workspace: WorkspaceNumber) -> String {
+        if self.current_group.is_empty() {
+            workspace.to_string()
         } else {
-            Ok(format!("{group_name}-{workspace_number}"))
+            format!("{}-{workspace}", self.current_group)
         }
     }
 }
