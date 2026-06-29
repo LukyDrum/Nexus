@@ -32,6 +32,7 @@ impl Overseer {
             NexusMessage::MoveActiveWindowToNamedWorkspace(named_workspace) => {
                 self.move_active_window(named_workspace)
             }
+            NexusMessage::ListAllClients => self.list_clients(),
         })
     }
 
@@ -65,15 +66,19 @@ impl Overseer {
         self.switch_to_current_workspace()
     }
 
+    /// A utility function that creates a Hyprland action to switch to the currently opened workspace according to the state.
+    fn switch_to_current_workspace(&self) -> NexusResult<HyprlandAction> {
+        let new_workspace = self.state.current_workspace()?;
+        Ok(HyprlandAction::SwitchWorkspace(new_workspace))
+    }
+
     /// Moves the currently active window to a workspace in the current group with number `target_workspace`.
     fn move_active_window(&mut self, target_workspace: String) -> HyprlandAction {
         HyprlandAction::MoveActiveWindowToWorkspace(target_workspace)
     }
 
-    /// A utility function that creates a Hyprland action to switch to the currently opened workspace according to the state.
-    fn switch_to_current_workspace(&self) -> NexusResult<HyprlandAction> {
-        let new_workspace = self.state.current_workspace()?;
-        Ok(HyprlandAction::SwitchWorkspace(new_workspace))
+    fn list_clients(&self) -> HyprlandAction {
+        HyprlandAction::Clients
     }
 
     /* Bellow lay the implementation of handlers that react to changes in Hyprland */

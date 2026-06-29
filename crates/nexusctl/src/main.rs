@@ -12,5 +12,8 @@ struct NexusCli {
 async fn main() -> anyhow::Result<()> {
     let cli = NexusCli::parse();
 
-    send_command(cli.command).await
+    let response = send_command(cli.command).await?;
+    println!("{response:?}");
+
+    Ok(())
 }

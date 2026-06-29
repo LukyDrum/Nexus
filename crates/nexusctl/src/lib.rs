@@ -2,13 +2,21 @@ mod command;
 
 pub use command::{NexusCommand, SpaceSelector};
 
-use nexus_api::{NEXUS_COMMUNICATION_SOCKET, NexusMessage, NexusStream};
+use nexus_api::{NEXUS_COMMUNICATION_SOCKET, NexusMessage, NexusResponse, NexusStream};
 
-pub async fn send_command(command: NexusCommand) -> anyhow::Result<()> {
-    let stream = NexusStream::<NexusMessage>::connect(NEXUS_COMMUNICATION_SOCKET).await?;
+pub async fn send_command(command: NexusCommand) -> anyhow::Result<NexusResponse> {
+    let mut stream = NexusStream::connect(NEXUS_COMMUNICATION_SOCKET).await?;
 
     stream.writable().await?;
-    let _ = stream.try_write(&command.into()).await?;
+    let _ = stream.try_write::<NexusMessage>(&command.into()).await?;
 
-    Ok(())
+    stream.readable().await?;
+    let response = stream
+        .try_read::<NexusResponse>()
+        .await?
+        .unwrap_or(NexusResponse::Empty);
+
+    let _ = stream.shutdown().await;
+
+    Ok(response)
 }

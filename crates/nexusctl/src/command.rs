@@ -8,6 +8,7 @@ pub enum NexusCommand {
         window: Window,
         target: String,
     },
+    Clients,
 }
 
 #[derive(Clone, Debug, clap::Subcommand)]
@@ -38,6 +39,7 @@ impl From<NexusCommand> for NexusMessage {
                     NexusMessage::MoveActiveWindowToNamedWorkspace(target)
                 }
             }
+            NexusCommand::Clients => NexusMessage::ListAllClients,
         }
     }
 }

@@ -23,7 +23,7 @@ impl NexusListener {
     }
 
     /// Accepts a new incoming connection and returns a [`NexusStream`](crate::NexusStream) of type [`T`].
-    pub async fn accept<T>(&self) -> std::io::Result<NexusStream<T>> {
+    pub async fn accept(&self) -> std::io::Result<NexusStream> {
         let (stream, _addr) = self.listener.accept().await?;
         Ok(NexusStream::new(stream))
     }

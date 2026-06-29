@@ -1,4 +1,7 @@
-use crate::hyprland::hyprctl_eval;
+use crate::hyprland::{HyprlandResponse, ctl::hyprctl, hyprctl_eval};
+
+const JSON_FLAG: &str = "-j";
+const CLIENTS_COMMAND: &str = "clients";
 
 /// Variants of this enum represent the actions that Nexus could request from Hyprland.
 /// It should abstract away the Hyprland specifics and provide an easy interface for [`Overseer`](crate::overseer::Overseer)
@@ -9,24 +12,32 @@ pub(crate) enum HyprlandAction {
 
     /// Moves the currently active window to a named workspace.
     MoveActiveWindowToWorkspace(String),
+
+    /// List active clients.
+    Clients,
 }
 
 impl HyprlandAction {
-    pub async fn dispatch(self) -> anyhow::Result<()> {
+    pub async fn dispatch(self) -> anyhow::Result<HyprlandResponse> {
         match self {
             HyprlandAction::SwitchWorkspace(workspace) => {
                 let command =
                     format!("hl.dispatch(hl.dsp.focus({{ workspace = \"name:{workspace}\" }}))");
                 hyprctl_eval(&command).await?;
+                Ok(HyprlandResponse::None)
             }
             HyprlandAction::MoveActiveWindowToWorkspace(workspace) => {
                 let command = format!(
                     "hl.dispatch(hl.dsp.window.move({{ workspace = \"name:{workspace}\" }}))"
                 );
                 hyprctl_eval(&command).await?;
+                Ok(HyprlandResponse::None)
+            }
+            HyprlandAction::Clients => {
+                let response = hyprctl(&[JSON_FLAG], CLIENTS_COMMAND, &[]).await?;
+                let clients = serde_json::from_str(&response)?;
+                Ok(HyprlandResponse::Clients(clients))
             }
         }
-
-        Ok(())
     }
 }

@@ -1,26 +1,23 @@
-use std::io;
-
-use tokio::{io::AsyncReadExt, process::Command};
+use tokio::process::Command;
 
 /// Performs a call to `hyrpctl` with the provided parameters: `hyprctl <flags> <command> <args>`
 /// and returns the result as a string.
-pub(crate) async fn hyprctl(flags: &[&str], command: &str, args: &[&str]) -> io::Result<String> {
-    let mut handle = Command::new("hyprctl")
+pub(crate) async fn hyprctl(
+    flags: &[&str],
+    command: &str,
+    args: &[&str],
+) -> anyhow::Result<String> {
+    let output = Command::new("hyprctl")
         .args(flags)
         .arg(command)
         .args(args)
-        .spawn()?;
+        .output()
+        .await?;
 
-    handle.wait().await?;
-    if let Some(mut stdout) = handle.stdout {
-        let mut out = String::new();
-        let _ = stdout.read_to_string(&mut out).await?;
-        Ok(out)
-    } else {
-        Ok(String::new())
-    }
+    let output = String::from_utf8(output.stdout)?;
+    Ok(output)
 }
 
-pub(crate) async fn hyprctl_eval(arg: &str) -> io::Result<String> {
+pub(crate) async fn hyprctl_eval(arg: &str) -> anyhow::Result<String> {
     hyprctl(&[], "eval", &[arg]).await
 }

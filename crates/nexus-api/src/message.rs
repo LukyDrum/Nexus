@@ -25,4 +25,7 @@ pub enum NexusMessage {
 
     /// Moves the currently active window to a named workspace even outside of this group.
     MoveActiveWindowToNamedWorkspace(String),
+
+    /// Lists all the currently active clients of the WM.
+    ListAllClients,
 }
