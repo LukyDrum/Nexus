@@ -1,4 +1,4 @@
-use crate::hyprland;
+use crate::hyprland::hyprctl_eval;
 
 /// Variants of this enum represent the actions that Nexus could request from Hyprland.
 /// It should abstract away the Hyprland specifics and provide an easy interface for [`Overseer`](crate::overseer::Overseer)
@@ -17,13 +17,13 @@ impl HyprlandAction {
             HyprlandAction::SwitchWorkspace(workspace) => {
                 let command =
                     format!("hl.dispatch(hl.dsp.focus({{ workspace = \"name:{workspace}\" }}))");
-                hyprland::ctl_eval(command).await?;
+                hyprctl_eval(&command).await?;
             }
             HyprlandAction::MoveActiveWindowToWorkspace(workspace) => {
                 let command = format!(
                     "hl.dispatch(hl.dsp.window.move({{ workspace = \"name:{workspace}\" }}))"
                 );
-                hyprland::ctl_eval(command).await?;
+                hyprctl_eval(&command).await?;
             }
         }
 

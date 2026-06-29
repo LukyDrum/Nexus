@@ -1,7 +1,15 @@
+use std::io;
+
 use tokio::{io::AsyncReadExt, process::Command};
 
-pub(crate) async fn ctl_eval(command: String) -> anyhow::Result<String> {
-    let mut handle = Command::new("hyprctl").arg("eval").arg(command).spawn()?;
+/// Performs a call to `hyrpctl` with the provided parameters: `hyprctl <flags> <command> <args>`
+/// and returns the result as a string.
+pub(crate) async fn hyprctl(flags: &[&str], command: &str, args: &[&str]) -> io::Result<String> {
+    let mut handle = Command::new("hyprctl")
+        .args(flags)
+        .arg(command)
+        .args(args)
+        .spawn()?;
 
     handle.wait().await?;
     if let Some(mut stdout) = handle.stdout {
@@ -11,4 +19,8 @@ pub(crate) async fn ctl_eval(command: String) -> anyhow::Result<String> {
     } else {
         Ok(String::new())
     }
+}
+
+pub(crate) async fn hyprctl_eval(arg: &str) -> io::Result<String> {
+    hyprctl(&[], "eval", &[arg]).await
 }
