@@ -28,4 +28,7 @@ pub enum NexusMessage {
 
     /// Lists all the currently active clients of the WM.
     ListAllClients,
+
+    /// Lists all currently active groups (as in Nexus group).
+    ListGroups,
 }

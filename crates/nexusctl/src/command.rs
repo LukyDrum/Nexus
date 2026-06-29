@@ -9,6 +9,7 @@ pub enum NexusCommand {
         target: String,
     },
     Clients,
+    Groups,
 }
 
 #[derive(Clone, Debug, clap::Subcommand)]
@@ -40,6 +41,7 @@ impl From<NexusCommand> for NexusMessage {
                 }
             }
             NexusCommand::Clients => NexusMessage::ListAllClients,
+            NexusCommand::Groups => NexusMessage::ListGroups,
         }
     }
 }

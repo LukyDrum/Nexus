@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use anyhow::bail;
 use nexus_api::{
-    ActiveClient, NEXUS_COMMUNICATION_SOCKET, NexusListener, NexusMessage, NexusResponse,
+    ActiveClient, Either, NEXUS_COMMUNICATION_SOCKET, NexusListener, NexusMessage, NexusResponse,
 };
 use tokio::sync::RwLock;
 
@@ -20,14 +20,11 @@ pub(crate) async fn communication_task(overseer: Arc<RwLock<Overseer>>) -> anyho
         match listener.accept().await {
             Ok(mut stream) => {
                 stream.readable().await?;
-                let Some(response) = (match stream.try_read().await {
+                let response = match stream.try_read().await {
                     Ok(Some(msg)) => process_message(&overseer, msg).await,
                     Ok(None) => continue,
                     // TODO: Not bail?
                     Err(err) => bail!(err),
-                }) else {
-                    let _ = stream.shutdown().await;
-                    continue;
                 };
 
                 stream.writable().await?;
@@ -39,15 +36,19 @@ pub(crate) async fn communication_task(overseer: Arc<RwLock<Overseer>>) -> anyho
     }
 }
 
-async fn process_message(
-    overseer: &RwLock<Overseer>,
-    message: NexusMessage,
-) -> Option<NexusResponse> {
-    let action = match overseer.write().await.process_nexus_message(message) {
+async fn process_message(overseer: &RwLock<Overseer>, message: NexusMessage) -> NexusResponse {
+    let action_or_response = match overseer.write().await.process_nexus_message(message) {
         Ok(action) => action,
         Err(err) => {
             println!("Processing error: {err:?}");
-            return None;
+            return NexusResponse::Empty;
+        }
+    };
+
+    let action = match action_or_response {
+        Either::Left(action) => action,
+        Either::Right(response) => {
+            return response;
         }
     };
 
@@ -55,13 +56,13 @@ async fn process_message(
         Ok(reponse) => reponse,
         Err(err) => {
             println!("Action dispatch error: {err}");
-            return None;
+            return NexusResponse::Empty;
         }
     };
 
     match response {
-        HyprlandResponse::None => None,
-        HyprlandResponse::Clients(hyprland_clients) => Some(NexusResponse::Clients(
+        HyprlandResponse::None => NexusResponse::Empty,
+        HyprlandResponse::Clients(hyprland_clients) => NexusResponse::Clients(
             hyprland_clients
                 .into_iter()
                 .map(
@@ -76,6 +77,6 @@ async fn process_message(
                     },
                 )
                 .collect(),
-        )),
+        ),
     }
 }

@@ -1,4 +1,7 @@
-use nexus_api::{NexusMessage, WorkspaceNumber};
+use nexus_api::{
+    Either::{self, Left, Right},
+    NexusMessage, NexusResponse, WorkspaceNumber,
+};
 
 use crate::{
     core::{
@@ -19,20 +22,24 @@ impl Overseer {
         Self { state }
     }
 
-    /// Processes the message and returns a [`HyprlandAction`] if some needs to be performed.
+    /// Processes the message and returns a [`HyprlandAction`] if some needs to be performed or a [`NexusResponse`] if no action is needed.
     /// This action needs yet to be called.
     /// By returning the action instead of calling it directly, we avoid holding a write lock for too long.
-    pub fn process_nexus_message(&mut self, message: NexusMessage) -> NexusResult<HyprlandAction> {
+    pub fn process_nexus_message(
+        &mut self,
+        message: NexusMessage,
+    ) -> NexusResult<Either<HyprlandAction, NexusResponse>> {
         Ok(match message {
-            NexusMessage::SwitchWorkspace(number) => self.switch_workspace(number)?,
-            NexusMessage::SwitchGroup(name) => self.switch_group(name)?,
+            NexusMessage::SwitchWorkspace(number) => Left(self.switch_workspace(number)?),
+            NexusMessage::SwitchGroup(name) => Left(self.switch_group(name)?),
             NexusMessage::MoveActiveWindowToWorkspace(number) => {
-                self.move_active_window(self.state.name_for_current_workspace(number))
+                Left(self.move_active_window(self.state.name_for_current_workspace(number)))
             }
             NexusMessage::MoveActiveWindowToNamedWorkspace(named_workspace) => {
-                self.move_active_window(named_workspace)
+                Left(self.move_active_window(named_workspace))
             }
-            NexusMessage::ListAllClients => self.list_clients(),
+            NexusMessage::ListAllClients => Left(self.list_clients()),
+            NexusMessage::ListGroups => Right(self.list_groups()),
         })
     }
 
@@ -77,8 +84,14 @@ impl Overseer {
         HyprlandAction::MoveActiveWindowToWorkspace(target_workspace)
     }
 
+    /// List currently active Hyprland clients.
     fn list_clients(&self) -> HyprlandAction {
         HyprlandAction::Clients
+    }
+
+    /// List currently active Nexus groups.
+    fn list_groups(&self) -> NexusResponse {
+        NexusResponse::Groups(self.state.groups.keys().cloned().collect())
     }
 
     /* Bellow lay the implementation of handlers that react to changes in Hyprland */
