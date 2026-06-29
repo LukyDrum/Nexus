@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use anyhow::bail;
 use nexus_api::{
-    ActiveClient, Either, NEXUS_COMMUNICATION_SOCKET, NexusListener, NexusMessage, NexusResponse,
+    ActiveClient, Either, NEXUS_COMMUNICATION_SOCKET, NexusListener, NexusRequest, NexusResponse,
 };
 use tokio::sync::RwLock;
 
@@ -36,7 +36,7 @@ pub(crate) async fn communication_task(overseer: Arc<RwLock<Overseer>>) -> anyho
     }
 }
 
-async fn process_message(overseer: &RwLock<Overseer>, message: NexusMessage) -> NexusResponse {
+async fn process_message(overseer: &RwLock<Overseer>, message: NexusRequest) -> NexusResponse {
     let action_or_response = match overseer.write().await.process_nexus_message(message) {
         Ok(action) => action,
         Err(err) => {

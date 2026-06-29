@@ -1,6 +1,6 @@
 use nexus_api::{
     Either::{self, Left, Right},
-    NexusMessage, NexusResponse, WorkspaceNumber,
+    NexusRequest, NexusResponse, WorkspaceNumber,
 };
 
 use crate::{
@@ -27,19 +27,19 @@ impl Overseer {
     /// By returning the action instead of calling it directly, we avoid holding a write lock for too long.
     pub fn process_nexus_message(
         &mut self,
-        message: NexusMessage,
+        message: NexusRequest,
     ) -> NexusResult<Either<HyprlandAction, NexusResponse>> {
         Ok(match message {
-            NexusMessage::SwitchWorkspace(number) => Left(self.switch_workspace(number)?),
-            NexusMessage::SwitchGroup(name) => Left(self.switch_group(name)?),
-            NexusMessage::MoveActiveWindowToWorkspace(number) => {
+            NexusRequest::SwitchWorkspace(number) => Left(self.switch_workspace(number)?),
+            NexusRequest::SwitchGroup(name) => Left(self.switch_group(name)?),
+            NexusRequest::MoveActiveWindowToWorkspace(number) => {
                 Left(self.move_active_window(self.state.name_for_current_workspace(number)))
             }
-            NexusMessage::MoveActiveWindowToNamedWorkspace(named_workspace) => {
+            NexusRequest::MoveActiveWindowToNamedWorkspace(named_workspace) => {
                 Left(self.move_active_window(named_workspace))
             }
-            NexusMessage::ListAllClients => Left(self.list_clients()),
-            NexusMessage::ListGroups => Right(self.list_groups()),
+            NexusRequest::ListAllClients => Left(self.list_clients()),
+            NexusRequest::ListGroups => Right(self.list_groups()),
         })
     }
 

@@ -2,10 +2,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::types::WorkspaceNumber;
 
-/// The variants of this enum represent the possible messages that will be passed between
-/// the parts of the shell using the [`NexusSocket`](crate::NexusSocket).
+/// The variants of this enum represent the possible requests that will be send to the daemon.
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub enum NexusMessage {
+pub enum NexusRequest {
     /// Switches to a workspace defined by a number in the **current group**.
     /// It does not matter if the workspace already exists or not:
     ///     - If it does, then it will just switch to it,

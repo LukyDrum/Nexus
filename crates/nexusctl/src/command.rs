@@ -1,15 +1,17 @@
-use nexus_api::{NexusMessage, WorkspaceNumber};
+use nexus_api::{NexusRequest, WorkspaceNumber};
 
 #[derive(Debug, clap::Subcommand)]
 pub enum NexusCommand {
     #[command(subcommand)]
     Switch(SpaceSelector),
+
     Move {
         window: Window,
         target: String,
     },
-    Clients,
-    Groups,
+
+    #[command(subcommand)]
+    List(ListTarget),
 }
 
 #[derive(Clone, Debug, clap::Subcommand)]
@@ -18,30 +20,36 @@ pub enum SpaceSelector {
     Group { name: String },
 }
 
+#[derive(Clone, Debug, clap::Subcommand)]
+pub enum ListTarget {
+    Clients,
+    Groups,
+}
+
 #[derive(Clone, Debug, clap::ValueEnum)]
 pub enum Window {
     Active,
 }
 
-impl From<NexusCommand> for NexusMessage {
+impl From<NexusCommand> for NexusRequest {
     fn from(command: NexusCommand) -> Self {
         match command {
             NexusCommand::Switch(SpaceSelector::Workspace { number }) => {
-                NexusMessage::SwitchWorkspace(number)
+                NexusRequest::SwitchWorkspace(number)
             }
-            NexusCommand::Switch(SpaceSelector::Group { name }) => NexusMessage::SwitchGroup(name),
+            NexusCommand::Switch(SpaceSelector::Group { name }) => NexusRequest::SwitchGroup(name),
             NexusCommand::Move {
                 window: Window::Active,
                 target,
             } => {
                 if let Ok(number) = target.parse() {
-                    NexusMessage::MoveActiveWindowToWorkspace(number)
+                    NexusRequest::MoveActiveWindowToWorkspace(number)
                 } else {
-                    NexusMessage::MoveActiveWindowToNamedWorkspace(target)
+                    NexusRequest::MoveActiveWindowToNamedWorkspace(target)
                 }
             }
-            NexusCommand::Clients => NexusMessage::ListAllClients,
-            NexusCommand::Groups => NexusMessage::ListGroups,
+            NexusCommand::List(ListTarget::Clients) => NexusRequest::ListAllClients,
+            NexusCommand::List(ListTarget::Groups) => NexusRequest::ListGroups,
         }
     }
 }
