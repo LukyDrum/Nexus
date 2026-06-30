@@ -2,12 +2,11 @@ use std::{env, path::PathBuf, sync::Arc};
 
 use tokio::{io::AsyncReadExt, net::UnixStream, sync::RwLock};
 
-use crate::core::Overseer;
+use crate::core::{NexusResult, Overseer};
 
 const HIS_VAR: &str = "HYPRLAND_INSTANCE_SIGNATURE";
 const RUNTIME_DIR_VAR: &str = "XDG_RUNTIME_DIR";
 
-const CREATE_WORKSPACE: &str = "createworkspace";
 const CHANGE_WORKSPACE: &str = "workspace";
 
 /// Task that listens for Hyprland events and updates [`Overseer`](crate::core::Overseer).
@@ -34,9 +33,11 @@ pub(crate) async fn hypr_sync_task(overseer: Arc<RwLock<Overseer>>) -> anyhow::R
                 continue;
             };
 
-            let result = match event {
-                // CREATE_WORKSPACE => { /* For now we have no use */ }
-                CHANGE_WORKSPACE => overseer.write().await.on_workspace_changed(data),
+            let result: NexusResult<()> = match event {
+                CHANGE_WORKSPACE => {
+                    let () = overseer.write().await.on_workspace_changed(data);
+                    Ok(())
+                }
                 _ => Ok(()),
             };
 

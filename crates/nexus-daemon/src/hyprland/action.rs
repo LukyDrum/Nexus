@@ -1,3 +1,5 @@
+use nexus_api::WindowSelector;
+
 use crate::hyprland::{HyprlandResponse, ctl::hyprctl, hyprctl_eval};
 
 const JSON_FLAG: &str = "-j";
@@ -10,8 +12,11 @@ pub(crate) enum HyprlandAction {
     /// Performs a switch to a named workspace.
     SwitchWorkspace(String),
 
-    /// Moves the currently active window to a named workspace.
-    MoveActiveWindowToWorkspace(String),
+    /// Moves the `window` to a named `workspace`.
+    MoveWindowToNamedWorkspace {
+        window: WindowSelector,
+        workspace: String,
+    },
 
     /// List active clients.
     Clients,
@@ -26,9 +31,14 @@ impl HyprlandAction {
                 hyprctl_eval(&command).await?;
                 Ok(HyprlandResponse::None)
             }
-            HyprlandAction::MoveActiveWindowToWorkspace(workspace) => {
+            HyprlandAction::MoveWindowToNamedWorkspace { window, workspace } => {
+                let window = match window {
+                    WindowSelector::Focused => "activewindow".to_owned(),
+                    WindowSelector::Pid(pid) => format!("pid:{pid}"),
+                };
+
                 let command = format!(
-                    "hl.dispatch(hl.dsp.window.move({{ workspace = \"name:{workspace}\" }}))"
+                    "hl.dispatch(hl.dsp.window.move({{ workspace = \"name:{workspace}\", window = \"{window}\" }}))"
                 );
                 hyprctl_eval(&command).await?;
                 Ok(HyprlandResponse::None)
