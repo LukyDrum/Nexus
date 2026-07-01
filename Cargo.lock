@@ -1968,6 +1968,7 @@ dependencies = [
  "fuzzy-matcher",
  "iced",
  "nexus-widgets",
+ "nexusctl",
  "tokio",
  "xdg",
 ]

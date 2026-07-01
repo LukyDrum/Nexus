@@ -1,4 +1,4 @@
-use std::{fmt::Debug, sync::Arc, time::Duration};
+use std::{fmt::Debug, process::Command, sync::Arc, time::Duration};
 
 use fuzzy_matcher::{FuzzyMatcher, skim::SkimMatcherV2};
 use iced::{
@@ -312,7 +312,7 @@ impl NexusLauncher {
             Mode::ActiveApp => todo!("Active app"),
             Mode::TerminalCommand => todo!("Terminal command"),
             Mode::QuickAction => todo!("Quick action"),
-            Mode::Math => {}
+            Mode::Math => self.result_to_clipboard(),
         }
     }
 
@@ -350,5 +350,14 @@ impl NexusLauncher {
         let _ = send_command_blocking(NexusCommand::Switch(SwitchTarget::Group {
             name: group_name.clone(),
         }));
+    }
+
+    fn result_to_clipboard(&self) {
+        let Some((value, _)) = self.search_results.first() else {
+            return;
+        };
+        let value = value.trim_start_matches(Mode::Math.as_symbol()).trim();
+
+        let _ = Command::new("wl-copy").arg(value).spawn();
     }
 }
