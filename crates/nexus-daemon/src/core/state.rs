@@ -1,11 +1,10 @@
 use std::collections::HashMap;
 
-use nexus_api::WorkspaceNumber;
+use nexus_api::{GroupName, WorkspaceNumber};
 
 use crate::core::{
     DEFAULT_GROUP, Group,
     error::{InvalidState, NexusError, NexusResult},
-    group::GroupName,
 };
 
 /// [`NexusState`] exists independent of Hyprland.

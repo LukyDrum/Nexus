@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::GroupName;
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum NexusResponse {
     /// An empty response.
@@ -7,7 +9,7 @@ pub enum NexusResponse {
     /// A list of currently active clients.
     Clients(Vec<ActiveClient>),
     /// A list of names of the currently active Nexus groups.
-    Groups(Vec<String>),
+    Groups(Vec<GroupName>),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

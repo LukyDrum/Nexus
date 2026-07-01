@@ -1,13 +1,12 @@
 use nexus_api::{
     Either::{self, Left, Right},
-    NexusRequest, NexusResponse, WindowSelector, WorkspaceSelector,
+    GroupName, NexusRequest, NexusResponse, WindowSelector, WorkspaceSelector,
 };
 
 use crate::{
     core::{
         DEFAULT_GROUP, NexusState,
         error::{InvalidState, NexusResult},
-        group::GroupName,
         state::CurrentWorkspace,
     },
     hyprland::HyprlandAction,
@@ -126,14 +125,7 @@ impl Overseer {
 
     /// List currently active Nexus groups.
     fn list_groups(&self) -> NexusResponse {
-        NexusResponse::Groups(
-            self.state
-                .groups
-                .keys()
-                .map(|name| &name.0)
-                .cloned()
-                .collect(),
-        )
+        NexusResponse::Groups(self.state.groups.keys().cloned().collect())
     }
 
     /* Bellow lay the implementation of handlers that react to changes in Hyprland */
