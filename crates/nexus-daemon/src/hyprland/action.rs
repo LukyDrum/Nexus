@@ -18,6 +18,9 @@ pub(crate) enum HyprlandAction {
         workspace: String,
     },
 
+    /// Focuses window.
+    FocusWindow(WindowSelector),
+
     /// List active clients.
     Clients,
 }
@@ -40,6 +43,16 @@ impl HyprlandAction {
                 let command = format!(
                     "hl.dispatch(hl.dsp.window.move({{ workspace = \"name:{workspace}\", window = \"{window}\" }}))"
                 );
+                hyprctl_eval(&command).await?;
+                Ok(HyprlandResponse::None)
+            }
+            HyprlandAction::FocusWindow(window) => {
+                let window = match window {
+                    WindowSelector::Focused => return Ok(HyprlandResponse::None),
+                    WindowSelector::Pid(pid) => format!("pid:{pid}"),
+                };
+
+                let command = format!("hl.dispatch(hl.dsp.focus({{ window = \"{window}\" }}))");
                 hyprctl_eval(&command).await?;
                 Ok(HyprlandResponse::None)
             }

@@ -15,6 +15,9 @@ pub enum NexusRequest {
     ///     - If it does not, then it will create a new group and switch to workspace #1 in that group.
     SwitchGroup(GroupName),
 
+    /// Switches focus to a window.
+    FocusWindow(WindowSelector),
+
     /// Moves a window to a workspace.
     MoveWindowToWorkspace(WindowSelector, WorkspaceSelector),
 

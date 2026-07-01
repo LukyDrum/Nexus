@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use anyhow::bail;
 use nexus_api::{
     ActiveClient, Either, NEXUS_COMMUNICATION_SOCKET, NexusListener, NexusRequest, NexusResponse,
 };
@@ -19,16 +18,18 @@ pub(crate) async fn communication_task(overseer: Arc<RwLock<Overseer>>) -> anyho
     loop {
         match listener.accept().await {
             Ok(mut stream) => {
-                stream.readable().await?;
-                let response = match stream.try_read().await {
-                    Ok(Some(msg)) => process_message(&overseer, msg).await,
-                    Ok(None) => continue,
-                    // TODO: Not bail?
-                    Err(err) => bail!(err),
-                };
+                loop {
+                    let response = match stream.read().await {
+                        Ok(Some(msg)) => process_message(&overseer, msg).await,
+                        Ok(None) => break,
+                        Err(_err) => break,
+                    };
 
-                stream.writable().await?;
-                stream.try_write(&response).await?;
+                    if stream.write(&response).await.is_err() {
+                        break;
+                    }
+                }
+
                 let _ = stream.shutdown().await;
             }
             Err(err) => println!("Failed to accept client: {:?}", err),

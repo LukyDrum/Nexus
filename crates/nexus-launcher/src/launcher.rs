@@ -15,9 +15,9 @@ use nexus_widgets::{
     settings::{Size, WidgetSettings},
 };
 use nexusctl::{
-    ListTarget, NexusCommand, SwitchTarget,
-    nexus_api::{GroupName, NexusResponse},
-    send_command_blocking,
+    ListTarget, NexusCommand, SwitchTarget, Window,
+    nexus_api::{ActiveClient, GroupName, NexusResponse},
+    send_command_blocking, send_multiple_commands_blocking,
 };
 
 use crate::desktop::{DesktopEntry, read_desktop_entries};
@@ -41,6 +41,7 @@ pub struct NexusLauncher {
 
     desktop_entries: Vec<DesktopEntry>,
     current_groups: Vec<GroupName>,
+    active_apps: Vec<ActiveClient>,
 }
 
 #[derive(Clone, Debug)]
@@ -218,12 +219,25 @@ impl NexusWidget<LauncherMessage> for NexusLauncher {
 
 impl NexusLauncher {
     pub fn new() -> Self {
-        let groups_response =
-            nexusctl::send_command_blocking(NexusCommand::List(ListTarget::Groups));
-        let groups = match groups_response {
-            Ok(NexusResponse::Groups(groups)) => groups,
-            _ => Vec::new(),
-        };
+        let mut current_groups = Vec::new();
+        let mut active_apps = Vec::new();
+
+        let send_commands_result = send_multiple_commands_blocking(
+            [
+                NexusCommand::List(ListTarget::Groups),
+                NexusCommand::List(ListTarget::Clients),
+            ]
+            .into_iter(),
+        );
+        if let Ok(responses) = send_commands_result {
+            for response in responses {
+                match response {
+                    NexusResponse::Clients(active_clients) => active_apps = active_clients,
+                    NexusResponse::Groups(group_names) => current_groups = group_names,
+                    _ => {}
+                }
+            }
+        }
 
         let mut launcher = NexusLauncher {
             input_id: widget::Id::unique(),
@@ -233,7 +247,8 @@ impl NexusLauncher {
             search_results: Vec::new(),
             selected_result: 0,
             scroll_id: widget::Id::unique(),
-            current_groups: groups,
+            current_groups,
+            active_apps,
             mode: Mode::AppRunner,
         };
         // Init the search results
@@ -256,14 +271,18 @@ impl NexusLauncher {
             Mode::AppRunner => self
                 .desktop_entries
                 .iter()
-                .map(DesktopEntry::name)
+                .map(|entry| entry.name().to_owned())
                 .collect(),
             Mode::NexusGroup => self
                 .current_groups
                 .iter()
-                .map(GroupName::display_name)
+                .map(|group_name| group_name.display_name().to_owned())
                 .collect(),
-            Mode::ActiveApp => todo!(),
+            Mode::ActiveApp => self
+                .active_apps
+                .iter()
+                .map(|app| format!("{} - {}", app.name, app.title))
+                .collect(),
             Mode::QuickAction => todo!(),
             Mode::Math | Mode::TerminalCommand => return Vec::new(),
         };
@@ -271,16 +290,16 @@ impl NexusLauncher {
         self.match_search_results(&search, items.into_iter())
     }
 
-    fn match_search_results<'a>(
-        &'a self,
+    fn match_search_results(
+        &self,
         search: &str,
-        items: impl Iterator<Item = &'a str>,
+        items: impl Iterator<Item = String>,
     ) -> Vec<(String, usize)> {
         let mut scored_items = items
             .enumerate()
             .filter_map(|(index, item)| {
                 self.fuzzy_matcher
-                    .fuzzy_match(&Self::clean_str(item), search)
+                    .fuzzy_match(&Self::clean_str(&item), search)
                     .map(|score| ((item, index), score))
             })
             .collect::<Vec<_>>();
@@ -289,7 +308,7 @@ impl NexusLauncher {
 
         scored_items
             .into_iter()
-            .map(|((item, index), _)| (item.to_string(), index))
+            .map(|((item, index), _)| (item, index))
             .collect()
     }
 
@@ -309,7 +328,7 @@ impl NexusLauncher {
         match self.mode {
             Mode::AppRunner => self.run_selected_app(),
             Mode::NexusGroup => self.switch_to_selected_group(),
-            Mode::ActiveApp => todo!("Active app"),
+            Mode::ActiveApp => self.switch_to_selected_app(),
             Mode::TerminalCommand => todo!("Terminal command"),
             Mode::QuickAction => todo!("Quick action"),
             Mode::Math => self.result_to_clipboard(),
@@ -349,6 +368,20 @@ impl NexusLauncher {
 
         let _ = send_command_blocking(NexusCommand::Switch(SwitchTarget::Group {
             name: group_name.clone(),
+        }));
+    }
+
+    fn switch_to_selected_app(&self) {
+        let Some(app) = self
+            .search_results
+            .get(self.selected_result)
+            .and_then(|(_title, index)| self.active_apps.get(*index))
+        else {
+            return;
+        };
+
+        let _ = send_command_blocking(NexusCommand::Switch(SwitchTarget::Window {
+            window: Window::Pid(app.pid),
         }));
     }
 

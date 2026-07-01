@@ -36,6 +36,7 @@ impl Overseer {
             NexusRequest::MoveWindowToWorkspace(window, workspace) => {
                 Left(self.move_window_to_workspace(window, workspace)?)
             }
+            NexusRequest::FocusWindow(window) => Left(self.focus_window(window)),
             NexusRequest::ListAllClients => Left(self.list_clients()),
             NexusRequest::ListGroups => Right(self.list_groups()),
         })
@@ -114,6 +115,10 @@ impl Overseer {
                 workspace: name,
             },
         })
+    }
+
+    fn focus_window(&self, window: WindowSelector) -> HyprlandAction {
+        HyprlandAction::FocusWindow(window)
     }
 
     /// List currently active Hyprland clients.
