@@ -1,11 +1,11 @@
 use std::str::FromStr;
 
-use nexus_api::{NexusRequest, WindowSelector, WorkspaceNumber, WorkspaceSelector};
+use nexus_api::{GroupName, NexusRequest, WindowSelector, WorkspaceNumber, WorkspaceSelector};
 
 #[derive(Debug, clap::Subcommand)]
 pub enum NexusCommand {
     #[command(subcommand)]
-    Switch(SpaceSelector),
+    Switch(SwitchTarget),
 
     Move {
         window: Window,
@@ -17,9 +17,9 @@ pub enum NexusCommand {
 }
 
 #[derive(Clone, Debug, clap::Subcommand)]
-pub enum SpaceSelector {
+pub enum SwitchTarget {
     Workspace { number: WorkspaceNumber },
-    Group { name: String },
+    Group { name: GroupName },
 }
 
 #[derive(Clone, Debug, clap::Subcommand)]
@@ -53,10 +53,10 @@ impl FromStr for Window {
 impl From<NexusCommand> for NexusRequest {
     fn from(command: NexusCommand) -> Self {
         match command {
-            NexusCommand::Switch(SpaceSelector::Workspace { number }) => {
+            NexusCommand::Switch(SwitchTarget::Workspace { number }) => {
                 NexusRequest::SwitchWorkspace(WorkspaceSelector::InGroup(number))
             }
-            NexusCommand::Switch(SpaceSelector::Group { name }) => NexusRequest::SwitchGroup(name),
+            NexusCommand::Switch(SwitchTarget::Group { name }) => NexusRequest::SwitchGroup(name),
             NexusCommand::Move { window, target } => {
                 let target = if let Ok(number) = target.parse() {
                     WorkspaceSelector::InGroup(number)

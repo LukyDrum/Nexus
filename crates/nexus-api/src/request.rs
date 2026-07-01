@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::types::WorkspaceNumber;
+use crate::{GroupName, types::WorkspaceNumber};
 
 /// The variants of this enum represent the possible requests that will be send to the daemon.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -13,7 +13,7 @@ pub enum NexusRequest {
     /// Same as with the workspace, it does not matter if the group already exists or not:
     ///     - If it does, then it will switch to the last used workspace in that group,
     ///     - If it does not, then it will create a new group and switch to workspace #1 in that group.
-    SwitchGroup(String),
+    SwitchGroup(GroupName),
 
     /// Moves a window to a workspace.
     MoveWindowToWorkspace(WindowSelector, WorkspaceSelector),

@@ -14,6 +14,11 @@ use nexus_widgets::{
     NexusWidget,
     settings::{Size, WidgetSettings},
 };
+use nexusctl::{
+    ListTarget, NexusCommand, SwitchTarget,
+    nexus_api::{GroupName, NexusResponse},
+    send_command_blocking,
+};
 
 use crate::desktop::{DesktopEntry, read_desktop_entries};
 
@@ -23,13 +28,19 @@ const ROW_HEIGHT: f32 = 40.0;
 pub struct NexusLauncher {
     input_id: widget::Id,
     input_content: String,
-    fuzzy_matcher: Arc<SkimMatcherV2>,
-    desktop_entries: Vec<DesktopEntry>,
-    list_results: Vec<(String, usize)>,
-    selected_result: usize,
     scroll_id: widget::Id,
 
     mode: Mode,
+
+    fuzzy_matcher: Arc<SkimMatcherV2>,
+
+    /// Index into `list_results`
+    selected_result: usize,
+    /// Pairs of the text to show and an index into a vec of actual values based on the current mode.
+    search_results: Vec<(String, usize)>,
+
+    desktop_entries: Vec<DesktopEntry>,
+    current_groups: Vec<GroupName>,
 }
 
 #[derive(Clone, Debug)]
@@ -80,6 +91,10 @@ impl Mode {
             Mode::QuickAction => ">",
         }
     }
+
+    fn all_symbols() -> &'static [char] {
+        &['#', '@', '=', ':', '>']
+    }
 }
 
 impl NexusWidget<LauncherMessage> for NexusLauncher {
@@ -108,15 +123,11 @@ impl NexusWidget<LauncherMessage> for NexusLauncher {
                     self.mode = Mode::AppRunner;
                 }
 
+                self.search_results = self.make_search_results();
+
                 // Mode specific update
                 match self.mode {
-                    Mode::AppRunner => {
-                        self.list_results = self.search_results();
-                    }
-                    Mode::NexusGroup => todo!(),
-                    Mode::ActiveApp => todo!(),
                     Mode::Math => self.math_update(),
-                    Mode::QuickAction => todo!(),
                     _ => {}
                 }
 
@@ -131,7 +142,7 @@ impl NexusWidget<LauncherMessage> for NexusLauncher {
                 self.selected_result = match direction {
                     NavigationDirection::Up => self.selected_result.saturating_sub(1),
                     NavigationDirection::Down => {
-                        (self.selected_result + 1).min(self.list_results.len() - 1)
+                        (self.selected_result + 1).min(self.search_results.len() - 1)
                     }
                 };
 
@@ -157,7 +168,7 @@ impl NexusWidget<LauncherMessage> for NexusLauncher {
 
         let search_results = {
             let results = self
-                .list_results
+                .search_results
                 .iter()
                 .enumerate()
                 .map(|(index, (name, _))| {
@@ -207,48 +218,78 @@ impl NexusWidget<LauncherMessage> for NexusLauncher {
 
 impl NexusLauncher {
     pub fn new() -> Self {
+        let groups_response =
+            nexusctl::send_command_blocking(NexusCommand::List(ListTarget::Groups));
+        let groups = match groups_response {
+            Ok(NexusResponse::Groups(groups)) => groups,
+            _ => Vec::new(),
+        };
+
         let mut launcher = NexusLauncher {
             input_id: widget::Id::unique(),
             input_content: String::new(),
             fuzzy_matcher: Arc::new(SkimMatcherV2::default()),
             desktop_entries: read_desktop_entries(),
-            list_results: Vec::new(),
+            search_results: Vec::new(),
             selected_result: 0,
             scroll_id: widget::Id::unique(),
+            current_groups: groups,
             mode: Mode::AppRunner,
         };
         // Init the search results
-        launcher.list_results = launcher.search_results();
+        launcher.search_results = launcher.make_search_results();
 
         launcher
     }
 
-    fn search_results(&self) -> Vec<(String, usize)> {
-        fn clean(string: &str) -> String {
-            string
-                .to_lowercase()
-                .replace(|c: char| c.is_whitespace(), "")
-        }
+    fn clean_str(string: &str) -> String {
+        string
+            .to_lowercase()
+            .trim_start_matches(|c| Mode::all_symbols().contains(&c))
+            .replace(|c: char| c.is_whitespace(), "")
+    }
 
-        let search = clean(&self.input_content);
+    fn make_search_results(&self) -> Vec<(String, usize)> {
+        let search = Self::clean_str(&self.input_content);
 
-        let mut scored_entries = self
-            .desktop_entries
-            .iter()
+        let items: Vec<_> = match self.mode {
+            Mode::AppRunner => self
+                .desktop_entries
+                .iter()
+                .map(DesktopEntry::name)
+                .collect(),
+            Mode::NexusGroup => self
+                .current_groups
+                .iter()
+                .map(GroupName::display_name)
+                .collect(),
+            Mode::ActiveApp => todo!(),
+            Mode::QuickAction => todo!(),
+            Mode::Math | Mode::TerminalCommand => return Vec::new(),
+        };
+
+        self.match_search_results(&search, items.into_iter())
+    }
+
+    fn match_search_results<'a>(
+        &'a self,
+        search: &str,
+        items: impl Iterator<Item = &'a str>,
+    ) -> Vec<(String, usize)> {
+        let mut scored_items = items
             .enumerate()
-            .filter_map(|(index, entry)| {
-                let name = entry.name();
+            .filter_map(|(index, item)| {
                 self.fuzzy_matcher
-                    .fuzzy_match(&clean(name), &search)
-                    .map(|score| ((name, index), score))
+                    .fuzzy_match(&Self::clean_str(item), search)
+                    .map(|score| ((item, index), score))
             })
             .collect::<Vec<_>>();
 
-        scored_entries.sort_by_key(|(_, score)| *score);
+        scored_items.sort_by_key(|(_, score)| *score);
 
-        scored_entries
+        scored_items
             .into_iter()
-            .map(|((name, index), _)| (name.to_string(), index))
+            .map(|((item, index), _)| (item.to_string(), index))
             .collect()
     }
 
@@ -260,14 +301,14 @@ impl NexusLauncher {
             .map(|result| format!("= {result}"))
             .unwrap_or("= undef.".to_owned());
 
-        self.list_results.clear();
-        self.list_results.push((evaluated, 0));
+        self.search_results.clear();
+        self.search_results.push((evaluated, 0));
     }
 
     fn on_submit(&self) {
         match self.mode {
             Mode::AppRunner => self.run_selected_app(),
-            Mode::NexusGroup => todo!("Nexus group"),
+            Mode::NexusGroup => self.switch_to_selected_group(),
             Mode::ActiveApp => todo!("Active app"),
             Mode::TerminalCommand => todo!("Terminal command"),
             Mode::QuickAction => todo!("Quick action"),
@@ -275,8 +316,10 @@ impl NexusLauncher {
         }
     }
 
+    /* On submit handlers */
+
     fn run_selected_app(&self) {
-        let Some((_name, index)) = self.list_results.get(self.selected_result) else {
+        let Some((_name, index)) = self.search_results.get(self.selected_result) else {
             return;
         };
         let Some(entry) = self.desktop_entries.get(*index) else {
@@ -285,5 +328,27 @@ impl NexusLauncher {
 
         #[expect(clippy::zombie_processes, reason = "We want to run it and forget it.")]
         entry.run().expect("Failed to run desktop entry!");
+    }
+
+    fn switch_to_selected_group(&self) {
+        let group_name = self
+            .search_results
+            .get(self.selected_result)
+            .and_then(|(_display_name, index)| self.current_groups.get(*index))
+            .map_or_else(
+                || {
+                    GroupName(
+                        self.input_content
+                            .trim_start_matches(Mode::NexusGroup.as_symbol())
+                            .trim()
+                            .to_owned(),
+                    )
+                },
+                GroupName::clone,
+            );
+
+        let _ = send_command_blocking(NexusCommand::Switch(SwitchTarget::Group {
+            name: group_name.clone(),
+        }));
     }
 }

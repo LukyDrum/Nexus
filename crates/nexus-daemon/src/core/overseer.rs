@@ -78,9 +78,7 @@ impl Overseer {
 
     /// Switches the currently opened group.
     /// If such group does not yet exist, then it will first create it.
-    fn switch_group(&mut self, name: String) -> NexusResult<HyprlandAction> {
-        let name = GroupName(name);
-
+    fn switch_group(&mut self, name: GroupName) -> NexusResult<HyprlandAction> {
         // Insert the group in case it does not exist yet and set it as the currently opened.
         self.state.groups.entry(name.clone()).or_default();
         self.state

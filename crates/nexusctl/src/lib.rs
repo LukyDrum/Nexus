@@ -1,6 +1,7 @@
 mod command;
 
-pub use command::{NexusCommand, SpaceSelector};
+pub use command::*;
+pub use nexus_api;
 
 use nexus_api::{NEXUS_COMMUNICATION_SOCKET, NexusRequest, NexusResponse, NexusStream};
 
@@ -19,4 +20,12 @@ pub async fn send_command(command: NexusCommand) -> anyhow::Result<NexusResponse
     let _ = stream.shutdown().await;
 
     Ok(response)
+}
+
+pub fn send_command_blocking(command: NexusCommand) -> anyhow::Result<NexusResponse> {
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?;
+
+    rt.block_on(send_command(command))
 }

@@ -9,5 +9,6 @@ calc_this = { path = "../calc_this" }
 fuzzy-matcher.workspace = true
 iced = { workspace = true, features = ["tokio"] }
 nexus-widgets = { path = "../nexus-widgets" }
+nexusctl = { path = "../nexusctl" }
 tokio = { workspace = true, features = ["time"] }
 xdg.workspace = true
