@@ -2,7 +2,7 @@ mod message;
 mod runner;
 pub mod settings;
 
-use iced::{Element, Subscription, Task};
+use iced::{Element, Subscription, Task, Theme};
 
 pub(crate) use message::LayerShellAppMessage;
 
@@ -26,5 +26,9 @@ pub trait NexusWidget<Message> {
 
     fn startup_task(&self) -> Task<Message> {
         Task::none()
+    }
+
+    fn theme(&self) -> Theme {
+        Theme::CatppuccinFrappe
     }
 }

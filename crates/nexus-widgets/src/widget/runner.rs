@@ -21,6 +21,7 @@ where
     pub fn run(widget: Widget) -> Result<(), iced_layershell::Error> {
         let name = widget.name();
         let settings = widget.settings();
+        let theme = widget.theme();
 
         iced_layershell::application(
             move || {
@@ -39,6 +40,7 @@ where
         )
         .settings(settings.into())
         .subscription(Self::subscription)
+        .theme(theme)
         .run()
     }
 

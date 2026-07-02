@@ -2,7 +2,8 @@ use std::{fmt::Debug, process::Command, sync::Arc, time::Duration};
 
 use fuzzy_matcher::{FuzzyMatcher, skim::SkimMatcherV2};
 use iced::{
-    Color, Element, Length, Subscription, Task,
+    Element, Font, Length, Subscription, Task,
+    font::Weight::{self},
     keyboard::{self, Key, key::Named},
     widget::{
         self, Column, Scrollable, Text, column,
@@ -174,11 +175,11 @@ impl NexusWidget<LauncherMessage> for NexusLauncher {
                 .enumerate()
                 .map(|(index, (name, _))| {
                     let text = Text::new(name).height(ROW_HEIGHT);
+                    let mut font = Font::default();
                     if self.selected_result == index {
-                        text.color(Color::BLACK).into()
-                    } else {
-                        text.color(Color::from_rgb8(60, 60, 60)).into()
+                        font.weight = Weight::Bold;
                     }
+                    text.font(font).into()
                 });
             let column = Column::with_children(results);
             Scrollable::new(column)
