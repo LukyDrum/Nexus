@@ -1,4 +1,6 @@
-[main]
+size = [800, 400]
+
+[style.main.palette]
 background = "#F8F9FAFF"
 text = "#212529FF"
 primary = "#0D6EFDFF"

@@ -1,29 +1,7 @@
-use crate::config::serde::{deserialize_hex_u32, serialize_hex_u32};
-
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct WidgetStyle {
-    pub main: BasePalette,
-}
-
-impl WidgetStyle {
-    pub fn default_dark() -> Self {
-        Self {
-            main: BasePalette {
-                background: Color::Hex(0x202225FF),
-                text: Color::Hex(0xEEEEEEFF),
-                primary: Color::Hex(0x5865F2FF),
-                success: Color::Hex(0x43B581FF),
-                warning: Color::Hex(0xFAA61AFF),
-                danger: Color::Hex(0xF04747FF),
-            },
-        }
-    }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct BasePalette {
+pub struct Palette {
     pub background: Color,
     pub text: Color,
     pub primary: Color,
@@ -32,9 +10,22 @@ pub struct BasePalette {
     pub danger: Color,
 }
 
-impl From<BasePalette> for iced::theme::Palette {
-    fn from(value: BasePalette) -> Self {
-        let BasePalette {
+impl Palette {
+    pub fn dark() -> Self {
+        Self {
+            background: Color::Hex(0x202225FF),
+            text: Color::Hex(0xEEEEEEFF),
+            primary: Color::Hex(0x5865F2FF),
+            success: Color::Hex(0x43B581FF),
+            warning: Color::Hex(0xFAA61AFF),
+            danger: Color::Hex(0xF04747FF),
+        }
+    }
+}
+
+impl From<Palette> for iced::theme::Palette {
+    fn from(value: Palette) -> Self {
+        let Palette {
             background,
             text,
             primary,
@@ -100,8 +91,18 @@ impl From<Color> for iced::Color {
     }
 }
 
-impl WidgetStyle {
-    pub fn main_theme(&self) -> iced::Theme {
-        iced::Theme::custom("custom", self.main.clone().into())
-    }
+pub(super) fn serialize_hex_u32<S>(x: &u32, s: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    s.serialize_str(&format!("#{:x}", x))
+}
+
+pub(super) fn deserialize_hex_u32<'de, D>(d: D) -> Result<u32, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let string = String::deserialize(d)?;
+    let string = string.strip_prefix("#").unwrap_or(&string);
+    u32::from_str_radix(string, 16).map_err(serde::de::Error::custom)
 }

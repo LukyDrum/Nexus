@@ -21,12 +21,17 @@ use nexusctl::{
     send_command_blocking, send_multiple_commands_blocking,
 };
 
-use crate::desktop::{DesktopEntry, read_desktop_entries};
+use crate::{
+    config::LauncherConfig,
+    desktop::{DesktopEntry, read_desktop_entries},
+};
 
 const ROW_HEIGHT: f32 = 40.0;
 
 #[derive(Clone)]
 pub struct NexusLauncher {
+    config: LauncherConfig,
+
     input_id: widget::Id,
     input_content: String,
     scroll_id: widget::Id,
@@ -106,7 +111,8 @@ impl NexusWidget<LauncherMessage> for NexusLauncher {
 
     fn settings(&self) -> WidgetSettings {
         WidgetSettings {
-            size: Size::Size(500, 300),
+            size: Size::Size(self.config.size.0, self.config.size.1),
+            anchor: self.config.anchor,
             ..Default::default()
         }
     }
@@ -141,6 +147,11 @@ impl NexusWidget<LauncherMessage> for NexusLauncher {
             }
             LauncherMessage::InputFocus => widget::operation::focus(self.input_id.clone()),
             LauncherMessage::ListNavigation(direction) => {
+                // No point in navigating no items
+                if self.search_results.is_empty() {
+                    return Task::none();
+                }
+
                 self.selected_result = match direction {
                     NavigationDirection::Up => self.selected_result.saturating_sub(1),
                     NavigationDirection::Down => {
@@ -216,10 +227,14 @@ impl NexusWidget<LauncherMessage> for NexusLauncher {
         };
         Task::future(future)
     }
+
+    fn theme(&self) -> iced::Theme {
+        self.config.style.main_theme()
+    }
 }
 
 impl NexusLauncher {
-    pub fn new() -> Self {
+    pub fn new(config: LauncherConfig) -> Self {
         let mut current_groups = Vec::new();
         let mut active_apps = Vec::new();
 
@@ -241,6 +256,7 @@ impl NexusLauncher {
         }
 
         let mut launcher = NexusLauncher {
+            config,
             input_id: widget::Id::unique(),
             input_content: String::new(),
             fuzzy_matcher: Arc::new(SkimMatcherV2::default()),

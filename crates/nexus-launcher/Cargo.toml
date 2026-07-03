@@ -6,9 +6,12 @@ authors.workspace = true
 
 [dependencies]
 calc_this = { path = "../calc_this" }
+clap.workspace = true
 fuzzy-matcher.workspace = true
 iced = { workspace = true, features = ["tokio"] }
 nexus-widgets = { path = "../nexus-widgets" }
 nexusctl = { path = "../nexusctl" }
+serde.workspace = true
 tokio = { workspace = true, features = ["time"] }
+toml.workspace = true
 xdg.workspace = true
