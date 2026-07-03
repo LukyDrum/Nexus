@@ -1,0 +1,7 @@
+[main]
+background = "#F8F9FAFF"
+text = "#212529FF"
+primary = "#0D6EFDFF"
+success = "#198754FF"
+warning = "#FFC107FF"
+danger = "#DC3545FF"
