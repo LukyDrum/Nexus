@@ -1,24 +1,27 @@
 use serde::{Deserialize, Serialize};
 
+mod common;
 mod palette;
-mod style;
 
+pub use common::*;
 pub use palette::{Color, Palette};
-pub use style::Style;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct WidgetAppStyle {
-    pub main: Style,
+    #[serde(default = "Palette::dark")]
+    pub palette: Palette,
+    pub widget: CommonStyle,
 }
 
 impl WidgetAppStyle {
     pub fn default_dark() -> Self {
         Self {
-            main: Style::default_dark(),
+            palette: Palette::dark(),
+            widget: CommonStyle::default(),
         }
     }
 
-    pub fn main_theme(&self) -> iced::Theme {
-        self.main.theme()
+    pub fn theme(&self) -> iced::Theme {
+        iced::Theme::custom("custom", self.palette.clone().into())
     }
 }

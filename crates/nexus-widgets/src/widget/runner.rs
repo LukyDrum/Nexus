@@ -1,5 +1,6 @@
 use std::{fmt::Debug, marker::PhantomData};
 
+use iced::widget::{Container, container};
 use iced::{Element, Subscription, Task};
 
 use crate::NexusWidget;
@@ -21,7 +22,7 @@ where
     pub fn run(widget: Widget) -> Result<(), iced_layershell::Error> {
         let name = widget.name();
         let settings = widget.settings();
-        let theme = widget.theme();
+        let theme = widget.style().theme();
 
         iced_layershell::application(
             move || {
@@ -41,6 +42,10 @@ where
         .settings(settings.into())
         .subscription(Self::subscription)
         .theme(theme)
+        .style(|_, theme| iced::theme::Style {
+            background_color: iced::Color::TRANSPARENT,
+            text_color: theme.palette().text,
+        })
         .run()
     }
 
@@ -59,7 +64,23 @@ where
 
     fn view(&'_ self) -> Element<'_, LayerShellAppMessage<Message>> {
         let element = self.widget.view().into();
-        element.map(LayerShellAppMessage::AppMessage)
+        let style = self.widget.style();
+
+        Container::new(element.map(LayerShellAppMessage::AppMessage))
+            .padding(style.widget.padding())
+            .style(move |_| container::Style {
+                text_color: style
+                    .widget
+                    .color()
+                    .or_else(|| Some(style.palette.text.into())),
+                background: style
+                    .widget
+                    .background()
+                    .or_else(|| Some(style.palette.background.into())),
+                border: style.widget.border(),
+                ..Default::default()
+            })
+            .into()
     }
 
     fn subscription(&self) -> Subscription<LayerShellAppMessage<Message>> {

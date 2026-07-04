@@ -1,9 +1,10 @@
 size = [800, 400]
 
-[style.main.palette]
-background = "#F8F9FAFF"
-text = "#212529FF"
-primary = "#0D6EFDFF"
-success = "#198754FF"
-warning = "#FFC107FF"
-danger = "#DC3545FF"
+style.widget.padding = [20, 20, 20, 20]
+style.widget.background = "#F8F9FAFF"
+style.widget.color = "#222222FF"
+
+[style.widget.border]
+color = [0, 0, 0, 0] # Transparent
+width = 1
+radius = [20, 20, 20, 20]

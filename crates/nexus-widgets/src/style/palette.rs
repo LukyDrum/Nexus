@@ -91,6 +91,13 @@ impl From<Color> for iced::Color {
     }
 }
 
+impl From<Color> for iced::Background {
+    fn from(value: Color) -> Self {
+        let color = value.into();
+        iced::Background::Color(color)
+    }
+}
+
 pub(super) fn serialize_hex_u32<S>(x: &u32, s: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,

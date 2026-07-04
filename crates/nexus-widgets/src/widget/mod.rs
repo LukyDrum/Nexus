@@ -2,13 +2,13 @@ mod message;
 mod runner;
 pub mod settings;
 
-use iced::{Element, Subscription, Task, Theme};
+use iced::{Element, Subscription, Task};
 
 pub(crate) use message::LayerShellAppMessage;
 
 pub use runner::NexusWidgetRunner;
 
-use crate::settings::WidgetSettings;
+use crate::{settings::WidgetSettings, style::WidgetAppStyle};
 
 /// This trait should be implemented for iced apps that you want to run with [`NexusWidgetRunner`].
 pub trait NexusWidget<Message> {
@@ -28,7 +28,7 @@ pub trait NexusWidget<Message> {
         Task::none()
     }
 
-    fn theme(&self) -> Theme {
-        Theme::CatppuccinFrappe
+    fn style(&self) -> WidgetAppStyle {
+        WidgetAppStyle::default_dark()
     }
 }

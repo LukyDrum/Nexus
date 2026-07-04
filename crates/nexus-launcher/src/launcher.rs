@@ -14,6 +14,7 @@ use iced::{
 use nexus_widgets::{
     NexusWidget,
     settings::{Size, WidgetSettings},
+    style::WidgetAppStyle,
 };
 use nexusctl::{
     ListTarget, NexusCommand, SwitchTarget, Window,
@@ -228,8 +229,8 @@ impl NexusWidget<LauncherMessage> for NexusLauncher {
         Task::future(future)
     }
 
-    fn theme(&self) -> iced::Theme {
-        self.config.style.main_theme()
+    fn style(&self) -> WidgetAppStyle {
+        self.config.style.clone()
     }
 }
 

@@ -28,7 +28,7 @@ impl NexusWidget<QuickMessage> for QuickWidget {
         text("Hello there!")
     }
 
-    fn theme(&self) -> iced::Theme {
-        self.style.main_theme()
+    fn style(&self) -> WidgetAppStyle {
+        self.style.clone()
     }
 }
