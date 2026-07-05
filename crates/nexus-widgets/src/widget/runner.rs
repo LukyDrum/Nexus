@@ -1,9 +1,10 @@
 use std::{fmt::Debug, marker::PhantomData};
 
-use iced::widget::{Container, container};
+use iced::widget::Container;
 use iced::{Element, Subscription, Task};
 
 use crate::NexusWidget;
+use crate::style::WithStyle;
 use crate::widget::LayerShellAppMessage;
 
 pub struct NexusWidgetRunner<Widget, Message>
@@ -62,24 +63,11 @@ where
         }
     }
 
-    fn view(&'_ self) -> Element<'_, LayerShellAppMessage<Message>> {
+    fn view<'a>(&'a self) -> Element<'a, LayerShellAppMessage<Message>> {
         let element = self.widget.view().into();
-        let style = self.widget.style();
 
         Container::new(element.map(LayerShellAppMessage::AppMessage))
-            .padding(style.widget.padding())
-            .style(move |_| container::Style {
-                text_color: style
-                    .widget
-                    .color()
-                    .or_else(|| Some(style.palette.text.into())),
-                background: style
-                    .widget
-                    .background()
-                    .or_else(|| Some(style.palette.background.into())),
-                border: style.widget.border(),
-                ..Default::default()
-            })
+            .with_style(self.widget.style().style_tree())
             .into()
     }
 

@@ -1,10 +1,11 @@
 size = [800, 400]
 
-style.widget.padding = [20, 20, 20, 20]
-style.widget.background = "#F8F9FAFF"
-style.widget.color = "#222222FF"
-
-[style.widget.border]
-color = [0, 0, 0, 0] # Transparent
-width = 1
-radius = [20, 20, 20, 20]
+[visual]
+style.widget = {
+    padding = [20, 20, 20, 20],
+    background = "#F8F9FAFF",
+    color = "#222222FF",
+}
+style.text = {
+    color = "#FF11FFFF",
+}

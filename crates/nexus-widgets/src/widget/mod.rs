@@ -8,7 +8,7 @@ pub(crate) use message::LayerShellAppMessage;
 
 pub use runner::NexusWidgetRunner;
 
-use crate::{settings::WidgetSettings, style::WidgetAppStyle};
+use crate::{settings::WidgetSettings, style::WidgetStyle};
 
 /// This trait should be implemented for iced apps that you want to run with [`NexusWidgetRunner`].
 pub trait NexusWidget<Message> {
@@ -28,7 +28,5 @@ pub trait NexusWidget<Message> {
         Task::none()
     }
 
-    fn style(&self) -> WidgetAppStyle {
-        WidgetAppStyle::default_dark()
-    }
+    fn style(&self) -> &WidgetStyle;
 }

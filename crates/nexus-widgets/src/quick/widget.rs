@@ -1,11 +1,11 @@
 use iced::{Task, widget::text};
 
-use crate::{NexusWidget, settings::WidgetSettings, style::WidgetAppStyle};
+use crate::{NexusWidget, settings::WidgetSettings, style::WidgetStyle};
 
 #[derive(Clone)]
 pub(super) struct QuickWidget {
     pub name: String,
-    pub style: WidgetAppStyle,
+    pub style: WidgetStyle,
 }
 
 #[derive(Clone, Debug)]
@@ -28,7 +28,7 @@ impl NexusWidget<QuickMessage> for QuickWidget {
         text("Hello there!")
     }
 
-    fn style(&self) -> WidgetAppStyle {
-        self.style.clone()
+    fn style(&self) -> &WidgetStyle {
+        &self.style
     }
 }

@@ -2,10 +2,13 @@ use serde::{Deserialize, Serialize};
 
 use crate::style::Color;
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
+#[serde(default)]
 pub struct CommonStyle {
     background: Option<Color>,
     color: Option<Color>,
+    highlight: Option<Color>,
+
     border: Border,
     /// Going: TL, TR, BR, BL
     padding: [f32; 4],
@@ -19,6 +22,10 @@ impl CommonStyle {
 
     pub fn color(&self) -> Option<iced::Color> {
         self.color.map(Into::into)
+    }
+
+    pub fn highlight(&self) -> Option<iced::Color> {
+        self.highlight.map(Into::into)
     }
 
     pub fn border(&self) -> iced::Border {
@@ -51,7 +58,8 @@ impl CommonStyle {
     }
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Border {
     color: Color,
     width: f32,

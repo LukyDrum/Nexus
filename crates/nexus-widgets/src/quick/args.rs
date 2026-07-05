@@ -1,4 +1,4 @@
-use crate::{quick::widget::QuickWidget, style::WidgetAppStyle};
+use crate::{quick::widget::QuickWidget, style::WidgetStyle};
 
 #[derive(Debug, clap::Parser)]
 pub(super) struct QuickArgs {
@@ -24,7 +24,7 @@ impl TryFrom<QuickArgs> for QuickWidget {
             let content = std::fs::read_to_string(path).map_err(ConvertError::Io)?;
             toml::from_str(&content).map_err(ConvertError::Toml)?
         } else {
-            WidgetAppStyle::default_dark()
+            WidgetStyle::default_dark()
         };
 
         Ok(QuickWidget {

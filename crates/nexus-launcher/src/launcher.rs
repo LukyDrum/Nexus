@@ -2,19 +2,14 @@ use std::{fmt::Debug, process::Command, sync::Arc, time::Duration};
 
 use fuzzy_matcher::{FuzzyMatcher, skim::SkimMatcherV2};
 use iced::{
-    Element, Font, Length, Subscription, Task,
-    font::Weight::{self},
-    keyboard::{self, Key, key::Named},
-    widget::{
-        self, Column, Scrollable, Text, column,
-        operation::{AbsoluteOffset, scroll_to},
-        text_input,
+    Element, Length, Subscription, Task, keyboard::{self, Key, key::Named}, widget::{
+        self, Column, Scrollable, Space, Text, column, operation::{AbsoluteOffset, scroll_to}, text_input,
     },
 };
 use nexus_widgets::{
     NexusWidget,
     settings::{Size, WidgetSettings},
-    style::WidgetAppStyle,
+    style::{WidgetStyle, WithStyle, WithStyleId},
 };
 use nexusctl::{
     ListTarget, NexusCommand, SwitchTarget, Window,
@@ -28,6 +23,8 @@ use crate::{
 };
 
 const ROW_HEIGHT: f32 = 40.0;
+const SELECTED_ID: &str = "selected";
+const NOT_SELECTED_ID: &str = "unselected";
 
 #[derive(Clone)]
 pub struct NexusLauncher {
@@ -175,8 +172,11 @@ impl NexusWidget<LauncherMessage> for NexusLauncher {
     }
 
     fn view(&'_ self) -> impl Into<Element<'_, LauncherMessage>> {
+        let style_tree = self.config.visual.style_tree();
+
         let input = text_input("Command...", &self.input_content)
             .id(self.input_id.clone())
+            .with_style(style_tree)
             .on_input(LauncherMessage::InputContentChanged)
             .on_submit(LauncherMessage::InputSubmit);
 
@@ -187,19 +187,25 @@ impl NexusWidget<LauncherMessage> for NexusLauncher {
                 .enumerate()
                 .map(|(index, (name, _))| {
                     let text = Text::new(name).height(ROW_HEIGHT);
-                    let mut font = Font::default();
-                    if self.selected_result == index {
-                        font.weight = Weight::Bold;
-                    }
-                    text.font(font).into()
+                    let text = if self.selected_result == index {
+                        text.with_style_id(SELECTED_ID)
+                    } else {
+                        text.with_style_id(NOT_SELECTED_ID)
+                    };
+
+                    text.with_style(style_tree).into()
                 });
+
             let column = Column::with_children(results);
             Scrollable::new(column)
                 .id(self.scroll_id.clone())
+                .with_style(style_tree)
                 .width(Length::Fill)
         };
 
-        column![input, search_results]
+        let gap = Space::new().height(20);
+
+        column![input, gap, search_results]
     }
 
     fn subscription(&self) -> Subscription<LauncherMessage> {
@@ -229,8 +235,8 @@ impl NexusWidget<LauncherMessage> for NexusLauncher {
         Task::future(future)
     }
 
-    fn style(&self) -> WidgetAppStyle {
-        self.config.style.clone()
+    fn style(&self) -> &WidgetStyle {
+        &self.config.visual
     }
 }
 
