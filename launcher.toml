@@ -1,11 +1,35 @@
 size = [800, 400]
 
-[visual]
-style.widget = {
+[visual.style]
+widget = {
     padding = [20, 20, 20, 20],
-    background = "#F8F9FAFF",
-    color = "#222222FF",
+    background = "#211e20ff",
+    border = {
+        color = "#e9efecff",
+        width = 2,
+        radius = [0, 0, 0, 0],
+    },
 }
-style.text = {
-    color = "#FF11FFFF",
+
+text = {
+    color = "#555568ff",
+}
+"#selected" = {
+    color = "#e9efecff",
+}
+
+input = {
+    background = "#0", # Transparent
+    color = "#e9efecff",
+    highlight = "#a0a08bff",
+}
+
+scroll = {
+    padding = [0, 10, 0, 10],
+}
+"scroll.rail.scroller" = {
+    background = "#555568ff",
+}
+"scroll.dragged.rail.scroller" = {
+    background = "#a0a08bff",
 }
