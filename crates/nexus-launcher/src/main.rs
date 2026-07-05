@@ -1,12 +1,17 @@
 mod args;
 mod config;
 mod desktop;
+mod history;
 mod launcher;
+
+use std::path::PathBuf;
 
 use clap::Parser;
 use nexus_widgets::NexusWidgetRunner;
 
-use crate::{args::LauncherArgs, config::LauncherConfig, launcher::NexusLauncher};
+use crate::{
+    args::LauncherArgs, config::LauncherConfig, history::History, launcher::NexusLauncher,
+};
 
 fn main() {
     let args = LauncherArgs::parse();
@@ -15,7 +20,12 @@ fn main() {
         .config
         .map_or_else(LauncherConfig::default, read_config);
 
-    let launcher = NexusLauncher::new(config);
+    let history_path = args
+        .history
+        .map_or_else(History::default_path, PathBuf::from);
+    let history = History::read_from(history_path).unwrap_or_default();
+
+    let launcher = NexusLauncher::new(config, history);
     NexusWidgetRunner::run(launcher).unwrap()
 }
 

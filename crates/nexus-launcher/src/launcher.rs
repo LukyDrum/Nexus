@@ -2,8 +2,12 @@ use std::{fmt::Debug, process::Command, sync::Arc, time::Duration};
 
 use fuzzy_matcher::{FuzzyMatcher, skim::SkimMatcherV2};
 use iced::{
-    Element, Length, Subscription, Task, keyboard::{self, Key, key::Named}, widget::{
-        self, Column, Scrollable, Space, Text, column, operation::{AbsoluteOffset, scroll_to}, text_input,
+    Element, Length, Subscription, Task,
+    keyboard::{self, Key, key::Named},
+    widget::{
+        self, Column, Scrollable, Space, Text, column,
+        operation::{AbsoluteOffset, scroll_to},
+        text_input,
     },
 };
 use nexus_widgets::{
@@ -20,6 +24,7 @@ use nexusctl::{
 use crate::{
     config::LauncherConfig,
     desktop::{DesktopEntry, read_desktop_entries},
+    history::History,
 };
 
 const ROW_HEIGHT: f32 = 40.0;
@@ -29,6 +34,7 @@ const NOT_SELECTED_ID: &str = "unselected";
 #[derive(Clone)]
 pub struct NexusLauncher {
     config: LauncherConfig,
+    history: History,
 
     input_id: widget::Id,
     input_content: String,
@@ -241,7 +247,7 @@ impl NexusWidget<LauncherMessage> for NexusLauncher {
 }
 
 impl NexusLauncher {
-    pub fn new(config: LauncherConfig) -> Self {
+    pub fn new(config: LauncherConfig, history: History) -> Self {
         let mut current_groups = Vec::new();
         let mut active_apps = Vec::new();
 
@@ -264,6 +270,7 @@ impl NexusLauncher {
 
         let mut launcher = NexusLauncher {
             config,
+            history,
             input_id: widget::Id::unique(),
             input_content: String::new(),
             fuzzy_matcher: Arc::new(SkimMatcherV2::default()),
@@ -322,16 +329,18 @@ impl NexusLauncher {
         let mut scored_items = items
             .enumerate()
             .filter_map(|(index, item)| {
+                let occurrences = self.history.get(&item);
                 self.fuzzy_matcher
                     .fuzzy_match(&Self::clean_str(&item), search)
-                    .map(|score| ((item, index), score))
+                    .map(|score| ((item, index), (score, occurrences)))
             })
             .collect::<Vec<_>>();
 
-        scored_items.sort_by_key(|(_, score)| *score);
+        scored_items.sort_by_key(|(_, rank)| *rank);
 
         scored_items
             .into_iter()
+            .rev()
             .map(|((item, index), _)| (item, index))
             .collect()
     }
@@ -371,6 +380,10 @@ impl NexusLauncher {
 
         #[expect(clippy::zombie_processes, reason = "We want to run it and forget it.")]
         entry.run().expect("Failed to run desktop entry!");
+
+        let mut history = self.history.clone();
+        history.add_record(entry.name().to_owned());
+        let _ = history.write();
     }
 
     fn switch_to_selected_group(&self) {
