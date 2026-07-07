@@ -33,9 +33,12 @@ impl<'a> WithStyle<'a> for iced::widget::Text<'a> {
     fn with_style(self, style: &'a StyleTree) -> Self {
         let common = style.get(Self::BASE_KEY);
 
-        self.style(move |_theme| iced::widget::text::Style {
-            color: common.color(),
-        })
+        self.width(common.width())
+            .height(common.height())
+            .line_height(common.line_height())
+            .style(move |_theme| iced::widget::text::Style {
+                color: common.color(),
+            })
     }
 }
 
@@ -46,6 +49,8 @@ impl<'a, Msg> WithStyle<'a> for iced::widget::Container<'a, Msg> {
         let common = style.get(Self::BASE_KEY);
 
         self.padding(common.padding())
+            .width(common.width())
+            .height(common.height())
             .style(move |_theme| iced::widget::container::Style {
                 text_color: common.color(),
                 background: common.background(),
@@ -60,8 +65,11 @@ impl<'a, Msg> WithStyle<'a> for iced::widget::Button<'a, Msg> {
 
     fn with_style(self, style: &'a StyleTree) -> Self {
         let base_tree = Self::base_tree(style);
+        let common = base_tree.style();
 
         self.padding(base_tree.style().padding())
+            .width(common.width())
+            .height(common.height())
             .style(move |theme, status| {
                 let common = base_tree.get(status);
 
@@ -83,8 +91,10 @@ where
 
     fn with_style(self, style: &'a StyleTree) -> Self {
         let base_tree = Self::base_tree(style);
+        let common = base_tree.style();
 
         self.padding(base_tree.style().padding())
+            .width(common.width())
             .style(move |theme, status| {
                 let common = base_tree.get(status);
                 let palette = theme.palette();
@@ -106,26 +116,29 @@ impl<'a, Msg> WithStyle<'a> for iced::widget::Scrollable<'a, Msg> {
 
     fn with_style(self, style: &'a StyleTree) -> Self {
         let base_tree = Self::base_tree(style);
+        let common = base_tree.style();
 
-        self.style(move |theme, status| {
-            let status_tree = base_tree.sub_tree(status);
-            let common = status_tree.style();
-            let gap = status_tree.get("gap");
+        self.width(common.width())
+            .height(common.height())
+            .style(move |theme, status| {
+                let status_tree = base_tree.sub_tree(status);
+                let common = status_tree.style();
+                let gap = status_tree.get("gap");
 
-            let mut scrollable = iced::widget::scrollable::default(theme, status);
+                let mut scrollable = iced::widget::scrollable::default(theme, status);
 
-            scrollable.container = iced::widget::container::Style {
-                text_color: common.color(),
-                background: common.background(),
-                border: common.border(),
-                ..Default::default()
-            };
-            scrollable.horizontal_rail = scrollable.horizontal_rail.with_style(status_tree);
-            scrollable.vertical_rail = scrollable.vertical_rail.with_style(status_tree);
-            scrollable.gap = gap.background();
+                scrollable.container = iced::widget::container::Style {
+                    text_color: common.color(),
+                    background: common.background(),
+                    border: common.border(),
+                    ..Default::default()
+                };
+                scrollable.horizontal_rail = scrollable.horizontal_rail.with_style(status_tree);
+                scrollable.vertical_rail = scrollable.vertical_rail.with_style(status_tree);
+                scrollable.gap = gap.background();
 
-            scrollable
-        })
+                scrollable
+            })
     }
 }
 
@@ -155,5 +168,18 @@ impl<'a> WithStyle<'a> for iced::widget::scrollable::Scroller {
         self.border = common.border();
 
         self
+    }
+}
+
+impl<'a> WithStyle<'a> for iced::widget::Image {
+    const BASE_KEY: &'static str = "image";
+
+    fn with_style(self, style: &'a StyleTree) -> Self {
+        let common = style.get(Self::BASE_KEY);
+
+        self.border_radius(common.border().radius)
+            .width(common.width())
+            .height(common.height())
+            .opacity(common.opacity())
     }
 }

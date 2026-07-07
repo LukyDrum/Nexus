@@ -5,9 +5,9 @@ use iced::{
     Element, Length, Subscription, Task,
     keyboard::{self, Key, key::Named},
     widget::{
-        self, Column, Scrollable, Space, Text, column,
+        self, Column, Image, Scrollable, Space, Text, column, container,
         operation::{AbsoluteOffset, scroll_to},
-        text_input,
+        stack, text_input,
     },
 };
 use nexus_widgets::{
@@ -192,14 +192,17 @@ impl NexusWidget<LauncherMessage> for NexusLauncher {
                 .iter()
                 .enumerate()
                 .map(|(index, (name, _))| {
-                    let text = Text::new(name).height(ROW_HEIGHT);
+                    let text = Text::new(name);
                     let text = if self.selected_result == index {
                         text.with_style_id(SELECTED_ID)
                     } else {
                         text.with_style_id(NOT_SELECTED_ID)
                     };
 
-                    text.with_style(style_tree).into()
+                    text.with_style(style_tree)
+                        .element()
+                        .height(ROW_HEIGHT)
+                        .into()
                 });
 
             let column = Column::with_children(results);
@@ -211,7 +214,19 @@ impl NexusWidget<LauncherMessage> for NexusLauncher {
 
         let gap = Space::new().height(20);
 
-        column![input, gap, search_results]
+        let column = column![input, gap, search_results];
+        let mut stack = stack!(column);
+
+        if let Some(bg_image) = &self.config.bg_image {
+            let image = Image::new(&bg_image).with_style(style_tree);
+            let image_container = container(image)
+                .center_x(self.config.size.0)
+                .center_y(self.config.size.1);
+
+            stack = stack.push_under(image_container);
+        }
+
+        stack
     }
 
     fn subscription(&self) -> Subscription<LauncherMessage> {

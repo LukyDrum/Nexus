@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 pub struct LauncherConfig {
     pub size: (u32, u32),
     pub anchor: Anchor,
+    pub bg_image: Option<String>,
     pub visual: WidgetStyle,
 }
 
@@ -14,6 +15,7 @@ impl Default for LauncherConfig {
         Self {
             size: (600, 400),
             anchor: Anchor::None,
+            bg_image: None,
             visual: WidgetStyle::default_dark(),
         }
     }
