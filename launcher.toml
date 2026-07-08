@@ -1,5 +1,6 @@
 size = [800, 400]
 bg_image = "assets/images/arch-linux.png"
+terminal_cmd = "ghostty --wait-after-command=true -e bash -c \"{CMD}\""
 
 [visual.style]
 widget = {

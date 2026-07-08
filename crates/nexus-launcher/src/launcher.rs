@@ -30,6 +30,7 @@ use crate::{
 const ROW_HEIGHT: f32 = 40.0;
 const SELECTED_ID: &str = "selected";
 const NOT_SELECTED_ID: &str = "unselected";
+const CMD_PATTERN: &str = "{CMD}";
 
 #[derive(Clone)]
 pub struct NexusLauncher {
@@ -136,12 +137,6 @@ impl NexusWidget<LauncherMessage> for NexusLauncher {
                 }
 
                 self.search_results = self.make_search_results();
-
-                // Mode specific update
-                match self.mode {
-                    Mode::Math => self.math_update(),
-                    _ => {}
-                }
 
                 Task::none()
             }
@@ -329,8 +324,23 @@ impl NexusLauncher {
                 .iter()
                 .map(|app| format!("{} - {}", app.name, app.title))
                 .collect(),
+            Mode::Math => return vec![(self.eval_math_expr(), 0)],
             Mode::QuickAction => todo!(),
-            Mode::Math | Mode::TerminalCommand => return Vec::new(),
+            Mode::TerminalCommand => {
+                if let Some(terminal_cmd) = &self.config.terminal_cmd {
+                    return vec![(
+                        terminal_cmd.replace(
+                            CMD_PATTERN,
+                            &self
+                                .input_content
+                                .trim_start_matches(Mode::TerminalCommand.as_symbol()),
+                        ),
+                        0,
+                    )];
+                } else {
+                    return vec![("Terminal command not configured!".to_owned(), 0)];
+                }
+            }
         };
 
         self.match_search_results(&search, items.into_iter())
@@ -360,16 +370,13 @@ impl NexusLauncher {
             .collect()
     }
 
-    fn math_update(&mut self) {
+    fn eval_math_expr(&self) -> String {
         let expr = self
             .input_content
             .trim_start_matches(Mode::Math.as_symbol());
-        let evaluated = calc_this::calc_this(expr, &[])
+        calc_this::calc_this(expr, &[])
             .map(|result| format!("= {result}"))
-            .unwrap_or("= undef.".to_owned());
-
-        self.search_results.clear();
-        self.search_results.push((evaluated, 0));
+            .unwrap_or("= undef.".to_owned())
     }
 
     fn on_submit(&self) {
@@ -377,7 +384,7 @@ impl NexusLauncher {
             Mode::AppRunner => self.run_selected_app(),
             Mode::NexusGroup => self.switch_to_selected_group(),
             Mode::ActiveApp => self.switch_to_selected_app(),
-            Mode::TerminalCommand => todo!("Terminal command"),
+            Mode::TerminalCommand => self.run_terminal_command(),
             Mode::QuickAction => todo!("Quick action"),
             Mode::Math => self.result_to_clipboard(),
         }
@@ -445,4 +452,50 @@ impl NexusLauncher {
 
         let _ = Command::new("wl-copy").arg(value).spawn();
     }
+
+    fn run_terminal_command(&self) {
+        let Some(terminal_cmd) = &self.config.terminal_cmd else {
+            return;
+        };
+
+        let cmd = self
+            .input_content
+            .trim_start_matches(Mode::TerminalCommand.as_symbol())
+            .trim();
+
+        let (program, args) = split_command(&terminal_cmd);
+        let args = args
+            .into_iter()
+            .map(|arg| arg.trim_matches(is_quote).replace(CMD_PATTERN, cmd));
+
+        let _ = Command::new(program)
+            .args(args)
+            .spawn()
+            .expect("Failed to run terminal command.");
+    }
+}
+
+fn split_command(command: &str) -> (&str, Vec<&str>) {
+    let mut start = 0;
+    let mut end = 0;
+    let mut quoted = false;
+    let mut parts = Vec::new();
+
+    for c in command.chars() {
+        if c == ' ' && !quoted {
+            parts.push(&command[start..end]);
+            start = end + 1;
+        } else if is_quote(c) {
+            quoted = !quoted;
+        }
+
+        end += 1;
+    }
+    parts.push(&command[start..end]);
+
+    (parts.remove(0), parts)
+}
+
+fn is_quote(c: char) -> bool {
+    c == '"' || c == '\''
 }
