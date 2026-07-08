@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use nexus_widgets::{settings::Anchor, style::WidgetStyle};
 use serde::{Deserialize, Serialize};
 
@@ -8,6 +10,7 @@ pub struct LauncherConfig {
     pub anchor: Anchor,
     pub bg_image: Option<String>,
     pub terminal_cmd: Option<String>,
+    pub actions: HashMap<String, String>,
     pub visual: WidgetStyle,
 }
 
@@ -18,6 +21,7 @@ impl Default for LauncherConfig {
             anchor: Anchor::None,
             bg_image: None,
             terminal_cmd: None,
+            actions: HashMap::new(),
             visual: WidgetStyle::default_dark(),
         }
     }

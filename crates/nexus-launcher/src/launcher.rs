@@ -325,7 +325,7 @@ impl NexusLauncher {
                 .map(|app| format!("{} - {}", app.name, app.title))
                 .collect(),
             Mode::Math => return vec![(self.eval_math_expr(), 0)],
-            Mode::QuickAction => todo!(),
+            Mode::QuickAction => self.config.actions.keys().cloned().collect(),
             Mode::TerminalCommand => {
                 if let Some(terminal_cmd) = &self.config.terminal_cmd {
                     return vec![(
@@ -385,7 +385,7 @@ impl NexusLauncher {
             Mode::NexusGroup => self.switch_to_selected_group(),
             Mode::ActiveApp => self.switch_to_selected_app(),
             Mode::TerminalCommand => self.run_terminal_command(),
-            Mode::QuickAction => todo!("Quick action"),
+            Mode::QuickAction => self.run_quick_action(),
             Mode::Math => self.result_to_clipboard(),
         }
     }
@@ -472,6 +472,22 @@ impl NexusLauncher {
             .args(args)
             .spawn()
             .expect("Failed to run terminal command.");
+    }
+
+    fn run_quick_action(&self) {
+        let Some((action, _)) = self.search_results.get(self.selected_result) else {
+            return;
+        };
+        let Some(cmd) = self.config.actions.get(action) else {
+            return;
+        };
+
+        let (program, args) = split_command(cmd);
+
+        let _ = Command::new(program)
+            .args(args)
+            .spawn()
+            .expect("Failed to run action.");
     }
 }
 
