@@ -5,11 +5,9 @@ use crate::style::Color;
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 #[serde(default)]
 pub struct CommonStyle {
-    background: Option<Color>,
-    color: Option<Color>,
-    highlight: Option<Color>,
+    #[serde(flatten)]
+    inheritable: InheritableStyle,
 
-    opacity: f32,
     width: Length,
     height: Length,
 
@@ -18,14 +16,23 @@ pub struct CommonStyle {
     padding: [f32; 4],
 }
 
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
+#[serde(default)]
+struct InheritableStyle {
+    background: Option<Color>,
+    color: Option<Color>,
+    highlight: Option<Color>,
+    opacity: Option<f32>,
+
+    text_size: Option<f32>,
+    line_height: Option<f32>,
+}
+
 impl Default for CommonStyle {
     fn default() -> Self {
         Self {
-            background: None,
-            color: None,
-            highlight: None,
+            inheritable: InheritableStyle::default(),
 
-            opacity: 1.0,
             width: Length::Fill,
             height: Length::Fill,
 
@@ -36,21 +43,37 @@ impl Default for CommonStyle {
 }
 
 impl CommonStyle {
+    pub const DEFAULT_TEXT_SIZE: f32 = 17.0;
+
     pub fn background(&self) -> Option<iced::Background> {
-        self.background
+        self.inheritable
+            .background
             .map(|background| iced::Background::Color(background.into()))
     }
 
     pub fn color(&self) -> Option<iced::Color> {
-        self.color.map(Into::into)
+        self.inheritable.color.map(Into::into)
     }
 
     pub fn highlight(&self) -> Option<iced::Color> {
-        self.highlight.map(Into::into)
+        self.inheritable.highlight.map(Into::into)
     }
 
     pub fn opacity(&self) -> f32 {
-        self.opacity
+        self.inheritable.opacity.unwrap_or(1.0)
+    }
+
+    pub fn text_size(&self) -> f32 {
+        self.inheritable
+            .text_size
+            .unwrap_or(Self::DEFAULT_TEXT_SIZE)
+    }
+
+    pub fn line_height(&self) -> iced::widget::text::LineHeight {
+        self.inheritable
+            .line_height
+            .map(|line_height| iced::widget::text::LineHeight::Absolute(line_height.into()))
+            .unwrap_or_default()
     }
 
     pub fn width(&self) -> iced::Length {
@@ -58,10 +81,6 @@ impl CommonStyle {
     }
 
     pub fn height(&self) -> iced::Length {
-        self.height.into()
-    }
-
-    pub fn line_height(&self) -> iced::widget::text::LineHeight {
         self.height.into()
     }
 
@@ -94,6 +113,26 @@ impl CommonStyle {
             left,
         }
     }
+
+    pub fn inherit(&self, parent: &Self) -> Self {
+        Self {
+            inheritable: self.inheritable.inherit(&parent.inheritable),
+            ..*self
+        }
+    }
+}
+
+impl InheritableStyle {
+    pub fn inherit(&self, parent: &Self) -> Self {
+        Self {
+            background: self.background.or(parent.background),
+            color: self.color.or(parent.color),
+            highlight: self.highlight.or(parent.highlight),
+            opacity: self.opacity.or(parent.opacity),
+            text_size: self.text_size.or(parent.text_size),
+            line_height: self.line_height.or(parent.line_height),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
@@ -120,15 +159,6 @@ impl From<Length> for iced::Length {
             Length::Shrink => Self::Shrink,
             Length::Fill => Self::Fill,
             Length::Fixed(value) => Self::Fixed(value),
-        }
-    }
-}
-
-impl From<Length> for iced::widget::text::LineHeight {
-    fn from(value: Length) -> Self {
-        match value {
-            Length::Fixed(value) => Self::Absolute(value.into()),
-            _ => Self::Relative(1.0),
         }
     }
 }

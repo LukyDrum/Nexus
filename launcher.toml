@@ -19,9 +19,11 @@ widget = {
 
 text = {
     color = "#555568ff",
+    line_height = 40,
 }
 "#selected" = {
     color = "#e9efecff",
+    text_size = 19,
 }
 
 input = {

@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 
 const DELIMETER: &str = ".";
-const ID: &str = "#";
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct StyleKey(String);
@@ -21,10 +20,6 @@ impl StyleKey {
         }
 
         Self(self.0 + DELIMETER + other.as_str())
-    }
-
-    pub fn is_id(&self) -> bool {
-        self.0.starts_with(ID)
     }
 
     pub fn is_base(&self) -> bool {

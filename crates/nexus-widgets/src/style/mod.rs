@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, rc::Rc};
 
 use serde::{Deserialize, Serialize};
 
@@ -41,7 +41,7 @@ impl From<WidgetStyleMediator> for WidgetStyle {
 
         WidgetStyle {
             palette: mediator.palette,
-            tree,
+            tree: Rc::new(tree),
         }
     }
 }
@@ -63,14 +63,14 @@ impl From<WidgetStyle> for WidgetStyleMediator {
 #[serde(from = "WidgetStyleMediator", into = "WidgetStyleMediator")]
 pub struct WidgetStyle {
     palette: Palette,
-    tree: StyleTree,
+    tree: Rc<StyleTree>,
 }
 
 impl WidgetStyle {
     pub fn default_dark() -> Self {
         Self {
             palette: Palette::dark(),
-            tree: StyleTree::default(),
+            tree: Rc::new(StyleTree::default()),
         }
     }
 
@@ -82,11 +82,7 @@ impl WidgetStyle {
         &self.palette
     }
 
-    pub fn style_tree(&self) -> &StyleTree {
-        &self.tree
-    }
-
-    pub fn style_tree_mut(&mut self) -> &mut StyleTree {
-        &mut self.tree
+    pub fn style_tree(&self) -> Rc<StyleTree> {
+        self.tree.clone()
     }
 }

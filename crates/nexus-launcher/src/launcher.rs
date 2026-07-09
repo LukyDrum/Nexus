@@ -27,7 +27,6 @@ use crate::{
     history::History,
 };
 
-const ROW_HEIGHT: f32 = 40.0;
 const SELECTED_ID: &str = "selected";
 const NOT_SELECTED_ID: &str = "unselected";
 const CMD_PATTERN: &str = "{CMD}";
@@ -163,7 +162,7 @@ impl NexusWidget<LauncherMessage> for NexusLauncher {
                     self.scroll_id.clone(),
                     AbsoluteOffset {
                         x: 0.0,
-                        y: offset as f32 * ROW_HEIGHT,
+                        y: offset as f32 * self.get_row_height(),
                     },
                 )
             }
@@ -177,7 +176,7 @@ impl NexusWidget<LauncherMessage> for NexusLauncher {
 
         let input = text_input("Command...", &self.input_content)
             .id(self.input_id.clone())
-            .with_style(style_tree)
+            .with_style(style_tree.clone())
             .on_input(LauncherMessage::InputContentChanged)
             .on_submit(LauncherMessage::InputSubmit);
 
@@ -194,16 +193,13 @@ impl NexusWidget<LauncherMessage> for NexusLauncher {
                         text.with_style_id(NOT_SELECTED_ID)
                     };
 
-                    text.with_style(style_tree)
-                        .element()
-                        .height(ROW_HEIGHT)
-                        .into()
+                    text.with_style(style_tree.clone()).element().into()
                 });
 
             let column = Column::with_children(results);
             Scrollable::new(column)
                 .id(self.scroll_id.clone())
-                .with_style(style_tree)
+                .with_style(style_tree.clone())
                 .width(Length::Fill)
         };
 
@@ -488,6 +484,15 @@ impl NexusLauncher {
             .args(args)
             .spawn()
             .expect("Failed to run action.");
+    }
+
+    fn get_row_height(&self) -> f32 {
+        let text_style = self.config.visual.style_tree().get(Text::BASE_KEY);
+
+        text_style
+            .line_height()
+            .to_absolute(text_style.text_size().into())
+            .0
     }
 }
 
