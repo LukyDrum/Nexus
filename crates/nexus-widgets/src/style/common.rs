@@ -26,6 +26,8 @@ struct InheritableStyle {
 
     text_size: Option<f32>,
     line_height: Option<f32>,
+    align_x: Option<Align>,
+    align_y: Option<Align>,
 }
 
 impl Default for CommonStyle {
@@ -74,6 +76,18 @@ impl CommonStyle {
             .line_height
             .map(|line_height| iced::widget::text::LineHeight::Absolute(line_height.into()))
             .unwrap_or_default()
+    }
+
+    pub fn align_x(&self) -> iced::Alignment {
+        self.inheritable
+            .align_x
+            .map_or(iced::Alignment::Start, Into::into)
+    }
+
+    pub fn align_y(&self) -> iced::Alignment {
+        self.inheritable
+            .align_y
+            .map_or(iced::Alignment::Start, Into::into)
     }
 
     pub fn width(&self) -> iced::Length {
@@ -131,6 +145,8 @@ impl InheritableStyle {
             opacity: self.opacity.or(parent.opacity),
             text_size: self.text_size.or(parent.text_size),
             line_height: self.line_height.or(parent.line_height),
+            align_x: self.align_x.or(parent.align_x),
+            align_y: self.align_y.or(parent.align_y),
         }
     }
 }
@@ -159,6 +175,34 @@ impl From<Length> for iced::Length {
             Length::Shrink => Self::Shrink,
             Length::Fill => Self::Fill,
             Length::Fixed(value) => Self::Fixed(value),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
+pub enum Align {
+    #[default]
+    Start,
+    Center,
+    End,
+}
+
+impl From<Align> for iced::Alignment {
+    fn from(value: Align) -> Self {
+        match value {
+            Align::Start => Self::Start,
+            Align::Center => Self::Center,
+            Align::End => Self::End,
+        }
+    }
+}
+
+impl From<Align> for iced::widget::text::Alignment {
+    fn from(value: Align) -> Self {
+        match value {
+            Align::Start => Self::Left,
+            Align::Center => Self::Center,
+            Align::End => Self::Right,
         }
     }
 }

@@ -24,7 +24,7 @@ where
         let base_tree = Self::base_tree(&style);
 
         let mut adhoc_tree = StyleTree::default();
-        adhoc_tree.set_style(base_tree.style());
+        adhoc_tree.set_style(base_tree.style().inherit(&style.style()));
         adhoc_tree.nest(Self::BASE_KEY, id_tree);
 
         // Need to go back to `ElementWithStyleId` due to trait definition
@@ -46,6 +46,8 @@ impl<'a> WithStyle for iced::widget::Text<'a> {
             .height(common.height())
             .size(common.text_size())
             .line_height(common.line_height())
+            .align_x(common.align_x())
+            .align_y(common.align_y())
             .style(move |_theme| iced::widget::text::Style {
                 color: common.color(),
             })
@@ -61,6 +63,8 @@ impl<'a, Msg> WithStyle for iced::widget::Container<'a, Msg> {
         self.padding(common.padding())
             .width(common.width())
             .height(common.height())
+            .align_x(common.align_x())
+            .align_y(common.align_y())
             .style(move |_theme| iced::widget::container::Style {
                 text_color: common.color(),
                 background: common.background(),
@@ -107,6 +111,7 @@ where
             .width(common.width())
             .size(common.text_size())
             .line_height(common.line_height())
+            .align_x(common.align_x())
             .style(move |theme, status| {
                 let common = base_tree.get(status);
                 let palette = theme.palette();

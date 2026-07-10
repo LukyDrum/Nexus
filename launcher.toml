@@ -1,4 +1,4 @@
-size = [800, 400]
+size = [500, 500]
 bg_image = "assets/images/arch-linux.png"
 terminal_cmd = "ghostty --wait-after-command=true -e bash -c \"{CMD}\""
 actions = {
@@ -8,13 +8,14 @@ actions = {
 
 [visual.style]
 widget = {
-    padding = [20, 20, 20, 20],
+    padding = [80, 50, 80, 50],
     background = "#211e20ff",
     border = {
         color = "#e9efecff",
         width = 2,
-        radius = [0, 0, 0, 0],
+        radius = [1000, 1000, 1000, 1000],
     },
+    align_x = "Center",
 }
 
 text = {
@@ -30,17 +31,19 @@ input = {
     background = "#0", # Transparent
     color = "#e9efecff",
     highlight = "#a0a08bff",
+    align_x = "Center",
 }
 
 scroll = {
     padding = [0, 10, 0, 10],
+    background = "#00000000",
 }
-"scroll.rail.scroller" = {
-    background = "#555568ff",
-}
-"scroll.dragged.rail.scroller" = {
-    background = "#a0a08bff",
-}
+# "scroll.rail.scroller" = {
+#     background = "#555568ff",
+# }
+# "scroll.dragged.rail.scroller" = {
+#     background = "#a0a08bff",
+# }
 
 image = {
     height = 250,
