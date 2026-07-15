@@ -66,6 +66,12 @@ pub struct WidgetStyle {
     tree: Rc<StyleTree>,
 }
 
+impl Default for WidgetStyle {
+    fn default() -> Self {
+        Self::default_dark()
+    }
+}
+
 impl WidgetStyle {
     pub fn default_dark() -> Self {
         Self {

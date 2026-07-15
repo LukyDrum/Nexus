@@ -5,6 +5,7 @@ edition = "2024"
 authors.workspace = true
 
 [dependencies]
+clap.workspace = true
 iced.workspace = true
 iced_layershell.workspace = true
 serde.workspace = true

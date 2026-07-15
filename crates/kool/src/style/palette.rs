@@ -111,5 +111,12 @@ where
 {
     let string = String::deserialize(d)?;
     let string = string.strip_prefix("#").unwrap_or(&string);
-    u32::from_str_radix(string, 16).map_err(serde::de::Error::custom)
+    let value = u32::from_str_radix(string, 16).map_err(serde::de::Error::custom)?;
+
+    // Treat RGB values as RGBA values with A = FF
+    if string.len() > 6 {
+        Ok(value)
+    } else {
+        Ok(value << 2 | 0xFF)
+    }
 }

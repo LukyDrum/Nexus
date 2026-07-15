@@ -1,0 +1,10 @@
+name = "Hello world!"
+size = [200, 100]
+kool = """
+    Text(\"Hello World! I am Kool!\")
+"""
+
+[visual.style]
+widget.align_x = "Center"
+widget.align_y = "Center"
+widget.background = "#000000"

@@ -51,6 +51,7 @@ impl From<WidgetSettings> for iced_layershell::Settings {
 }
 
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(untagged)]
 pub enum Size {
     #[default]
     Expand,

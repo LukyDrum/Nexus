@@ -1,14 +1,20 @@
-use kool::{ElementalWidget, KoolWidgetRunner, scan_and_parse, style::WidgetStyle};
+use clap::Parser;
+use kool::{ElementalArgs, ElementalConfig, ElementalWidget, KoolWidgetRunner, scan_and_parse};
 
 fn main() {
-    let input = r#"Container(key = "outer", Container(Text(key = "textkey", "Ho World!")))"#;
-    let element = scan_and_parse(input).unwrap();
+    let args = ElementalArgs::parse();
 
-    let elemental = ElementalWidget {
-        name: "Kool".to_owned(),
-        root: element,
-        style: WidgetStyle::default_dark(),
+    let config = std::fs::read_to_string(args.config).expect("Failed to read config file.");
+    let config: ElementalConfig = toml::from_str(&config).expect("Failed to parse config file.");
+
+    let root = scan_and_parse(&config.kool).expect("Failed to parse kool.");
+
+    let widget = ElementalWidget {
+        name: config.name,
+        settings: config.settings,
+        style: config.visual,
+        root,
     };
 
-    KoolWidgetRunner::run(elemental).unwrap();
+    KoolWidgetRunner::run(widget).expect("Failed to run widget.");
 }
