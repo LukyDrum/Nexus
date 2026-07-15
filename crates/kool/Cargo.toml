@@ -1,15 +1,11 @@
 [package]
-name = "nexus-widgets"
-description = "A simplified approach to building widgets using Iced framework."
+name = "kool"
 version = "0.1.0"
 edition = "2024"
 authors.workspace = true
 
 [dependencies]
-anyhow.workspace = true
-clap.workspace = true
 iced.workspace = true
 iced_layershell.workspace = true
 serde.workspace = true
-thiserror.workspace = true
 toml.workspace = true

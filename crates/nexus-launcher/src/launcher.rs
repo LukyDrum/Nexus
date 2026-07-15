@@ -10,10 +10,10 @@ use iced::{
         stack, text_input,
     },
 };
-use nexus_widgets::{
-    NexusWidget,
+use kool::{
+    KoolWidget,
     settings::{Size, WidgetSettings},
-    style::{WidgetStyle, WithStyle, WithStyleId},
+    style::{WidgetStyle, WithStyle, WithStyleKey},
 };
 use nexusctl::{
     ListTarget, NexusCommand, SwitchTarget, Window,
@@ -108,7 +108,7 @@ impl Mode {
     }
 }
 
-impl NexusWidget<LauncherMessage> for NexusLauncher {
+impl KoolWidget<LauncherMessage> for NexusLauncher {
     fn name(&self) -> String {
         "Nexus Menu App".to_owned()
     }
@@ -188,9 +188,9 @@ impl NexusWidget<LauncherMessage> for NexusLauncher {
                 .map(|(index, (name, _))| {
                     let text = Text::new(name);
                     let text = if self.selected_result == index {
-                        text.with_style_id(SELECTED_ID)
+                        text.with_style_key(SELECTED_ID)
                     } else {
-                        text.with_style_id(NOT_SELECTED_ID)
+                        text.with_style_key(NOT_SELECTED_ID)
                     };
 
                     text.with_style(style_tree.clone()).element().into()
@@ -209,7 +209,7 @@ impl NexusWidget<LauncherMessage> for NexusLauncher {
         let mut stack = stack!(column);
 
         if let Some(bg_image) = &self.config.bg_image {
-            let image = Image::new(&bg_image).with_style(style_tree);
+            let image = Image::new(bg_image).with_style(style_tree);
             let image_container = container(image)
                 .center_x(self.config.size.0)
                 .center_y(self.config.size.1);
@@ -327,8 +327,7 @@ impl NexusLauncher {
                     return vec![(
                         terminal_cmd.replace(
                             CMD_PATTERN,
-                            &self
-                                .input_content
+                            self.input_content
                                 .trim_start_matches(Mode::TerminalCommand.as_symbol()),
                         ),
                         0,
@@ -459,11 +458,12 @@ impl NexusLauncher {
             .trim_start_matches(Mode::TerminalCommand.as_symbol())
             .trim();
 
-        let (program, args) = split_command(&terminal_cmd);
+        let (program, args) = split_command(terminal_cmd);
         let args = args
             .into_iter()
             .map(|arg| arg.trim_matches(is_quote).replace(CMD_PATTERN, cmd));
 
+        #[expect(clippy::zombie_processes)]
         let _ = Command::new(program)
             .args(args)
             .spawn()
@@ -480,6 +480,7 @@ impl NexusLauncher {
 
         let (program, args) = split_command(cmd);
 
+        #[expect(clippy::zombie_processes)]
         let _ = Command::new(program)
             .args(args)
             .spawn()

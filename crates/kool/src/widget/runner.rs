@@ -3,21 +3,21 @@ use std::{fmt::Debug, marker::PhantomData};
 use iced::widget::Container;
 use iced::{Element, Subscription, Task};
 
-use crate::NexusWidget;
 use crate::style::WithStyle;
+use crate::widget::KoolWidget;
 use crate::widget::LayerShellAppMessage;
 
-pub struct NexusWidgetRunner<Widget, Message>
+pub struct KoolWidgetRunner<Widget, Message>
 where
-    Widget: NexusWidget<Message>,
+    Widget: KoolWidget<Message>,
 {
     widget: Widget,
     _phantom: PhantomData<Message>,
 }
 
-impl<Widget, Message> NexusWidgetRunner<Widget, Message>
+impl<Widget, Message> KoolWidgetRunner<Widget, Message>
 where
-    Widget: NexusWidget<Message> + Clone + 'static,
+    Widget: KoolWidget<Message> + Clone + 'static,
     Message: Clone + Debug + Send + 'static,
 {
     pub fn run(widget: Widget) -> Result<(), iced_layershell::Error> {

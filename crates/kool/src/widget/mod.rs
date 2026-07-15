@@ -5,13 +5,11 @@ pub mod settings;
 use iced::{Element, Subscription, Task};
 
 pub(crate) use message::LayerShellAppMessage;
+pub use runner::KoolWidgetRunner;
 
-pub use runner::NexusWidgetRunner;
+use crate::{style::WidgetStyle, widget::settings::WidgetSettings};
 
-use crate::{settings::WidgetSettings, style::WidgetStyle};
-
-/// This trait should be implemented for iced apps that you want to run with [`NexusWidgetRunner`].
-pub trait NexusWidget<Message> {
+pub trait KoolWidget<Message> {
     fn name(&self) -> String;
 
     fn settings(&self) -> WidgetSettings;

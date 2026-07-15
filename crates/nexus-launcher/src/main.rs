@@ -7,7 +7,7 @@ mod launcher;
 use std::path::PathBuf;
 
 use clap::Parser;
-use nexus_widgets::NexusWidgetRunner;
+use kool::KoolWidgetRunner;
 
 use crate::{
     args::LauncherArgs, config::LauncherConfig, history::History, launcher::NexusLauncher,
@@ -26,7 +26,7 @@ fn main() {
     let history = History::read_from(history_path).unwrap_or_default();
 
     let launcher = NexusLauncher::new(config, history);
-    NexusWidgetRunner::run(launcher).unwrap()
+    KoolWidgetRunner::run(launcher).unwrap()
 }
 
 fn read_config(path: String) -> LauncherConfig {

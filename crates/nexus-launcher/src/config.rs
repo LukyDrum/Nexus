@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use nexus_widgets::{settings::Anchor, style::WidgetStyle};
+use kool::{settings::Anchor, style::WidgetStyle};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

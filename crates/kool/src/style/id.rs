@@ -24,18 +24,18 @@ where
     }
 }
 
-pub trait WithStyleId {
-    fn with_style_id(self, id: impl Into<StyleKey>) -> ElementWithStyleId<Self>
+pub trait WithStyleKey {
+    fn with_style_key(self, id: impl Into<StyleKey>) -> ElementWithStyleId<Self>
     where
         Self: Sized;
 }
 
-impl<T> WithStyleId for T {
-    fn with_style_id(self, id: impl Into<StyleKey>) -> ElementWithStyleId<Self>
+impl<T> WithStyleKey for T {
+    fn with_style_key(self, key: impl Into<StyleKey>) -> ElementWithStyleId<Self>
     where
         Self: Sized,
     {
-        let id = id.into();
+        let id = key.into();
         let id = id.as_str().trim_start_matches('#');
 
         ElementWithStyleId {

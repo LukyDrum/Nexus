@@ -1952,6 +1952,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2db585e1d738fc771bf08a151420d3ed193d9d895a36df7f6f8a9456b911ddc"
 
 [[package]]
+name = "kool"
+version = "0.1.0"
+dependencies = [
+ "iced",
+ "iced_layershell",
+ "serde",
+ "toml",
+]
+
+[[package]]
 name = "kurbo"
 version = "0.10.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2337,25 +2347,12 @@ dependencies = [
  "clap",
  "fuzzy-matcher",
  "iced",
- "nexus-widgets",
+ "kool",
  "nexusctl",
  "serde",
  "tokio",
  "toml",
  "xdg",
-]
-
-[[package]]
-name = "nexus-widgets"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "clap",
- "iced",
- "iced_layershell",
- "serde",
- "thiserror 2.0.18",
- "toml",
 ]
 
 [[package]]

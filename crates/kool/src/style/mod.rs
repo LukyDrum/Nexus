@@ -10,7 +10,7 @@ mod tree;
 mod with;
 
 pub use common::{Border, CommonStyle};
-pub use id::{ElementWithStyleId, WithStyleId};
+pub use id::{ElementWithStyleId, WithStyleKey};
 pub use key::{AsStyleKey, StyleKey};
 pub use palette::{Color, Palette};
 pub use tree::StyleTree;

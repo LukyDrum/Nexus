@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::style::{ElementWithStyleId, StyleTree, WithStyleId};
+use crate::style::{ElementWithStyleId, StyleTree, WithStyleKey};
 
 pub trait WithStyle {
     const BASE_KEY: &'static str;
@@ -30,7 +30,7 @@ where
         // Need to go back to `ElementWithStyleId` due to trait definition
         self.element()
             .with_style(Rc::new(adhoc_tree))
-            .with_style_id(style_id)
+            .with_style_key(style_id)
     }
 }
 

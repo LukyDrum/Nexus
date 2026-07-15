@@ -9,7 +9,7 @@ calc_this = { path = "../calc_this" }
 clap.workspace = true
 fuzzy-matcher.workspace = true
 iced = { workspace = true, features = ["tokio"] }
-nexus-widgets = { path = "../nexus-widgets" }
+kool = { path = "../kool" }
 nexusctl = { path = "../nexusctl" }
 serde.workspace = true
 tokio = { workspace = true, features = ["time"] }
