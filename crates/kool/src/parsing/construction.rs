@@ -3,11 +3,13 @@ use std::collections::HashMap;
 use crate::{
     element::{KoolElement, kool},
     parsing::token::Value,
+    scan_and_parse,
 };
 
 #[derive(Clone, Debug)]
 pub enum ElementConstructionError<'a> {
     ExtraKeyValues(HashMap<&'a str, Value<'a>>),
+    Import(String),
     InvalidElementContent(ElementContent<'a>),
     InvalidValueForKey { key: &'static str, value: Value<'a> },
     UnknownElement(&'a str),
@@ -64,6 +66,10 @@ impl<'a> TryFrom<ElementInConstruction<'a>> for KoolElement {
         }: ElementInConstruction<'a>,
     ) -> Result<Self, Self::Error> {
         let element = match ident {
+            "Import" => {
+                let file = content!(inner, ElementContent::Value(Value::String(file)) => file);
+                resolve_import(file)?
+            }
             "Text" => Self::Text(kool::Text {
                 key: key_value!(key, values, Value::String(string) => string),
                 content: content!(inner, ElementContent::Value(Value::String(content)) => content),
@@ -81,4 +87,11 @@ impl<'a> TryFrom<ElementInConstruction<'a>> for KoolElement {
 
         Ok(element)
     }
+}
+
+// The stringification of the errors is not ideal... However it fixes the troubles with lifetimes.
+fn resolve_import(filename: String) -> Result<KoolElement, ElementConstructionError<'static>> {
+    let input = std::fs::read_to_string(filename)
+        .map_err(|error| ElementConstructionError::Import(format!("{error}")))?;
+    scan_and_parse(&input).map_err(|error| ElementConstructionError::Import(format!("{error:?}")))
 }

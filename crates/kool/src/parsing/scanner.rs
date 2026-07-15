@@ -16,7 +16,7 @@ pub struct CharWithMeta {
 }
 
 pub(super) fn scan<'a>(input: &'a str) -> Result<Vec<TokenWithMeta<'a>>, ScannerError> {
-    let lines = input.lines();
+    let lines = input.split_inclusive('\n');
     let mut chars = lines
         .into_iter()
         .enumerate()
@@ -46,8 +46,8 @@ pub(super) fn scan<'a>(input: &'a str) -> Result<Vec<TokenWithMeta<'a>>, Scanner
             ']' => Token::RightBracket,
             '=' => Token::Equal,
             ',' => Token::Comma,
-            '"' => {
-                let Some(string) = scan_string(input, index) else {
+            quote @ ('"' | '\'') => {
+                let Some(string) = scan_string(input, index, quote) else {
                     return Err(ScannerError::UnterminatedString(meta));
                 };
 
@@ -80,7 +80,7 @@ pub(super) fn scan<'a>(input: &'a str) -> Result<Vec<TokenWithMeta<'a>>, Scanner
     Ok(tokens)
 }
 
-fn scan_string(input: &str, start_index: usize) -> Option<&str> {
+fn scan_string(input: &str, start_index: usize, start_quote: char) -> Option<&str> {
     let start = start_index + 1;
     if start >= input.len() {
         return None;
@@ -89,7 +89,7 @@ fn scan_string(input: &str, start_index: usize) -> Option<&str> {
     let mut end = start;
     for char in input[start..].chars() {
         match char {
-            '"' => return Some(&input[start..end]),
+            quote if quote == start_quote => return Some(&input[start..end]),
             '\n' => return None,
             _ => end += 1,
         }
