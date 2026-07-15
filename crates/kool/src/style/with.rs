@@ -201,3 +201,31 @@ impl WithStyle for iced::widget::Image {
             .opacity(common.opacity())
     }
 }
+
+impl<'a, Msg> WithStyle for iced::widget::Column<'a, Msg> {
+    const BASE_KEY: &'static str = "column";
+
+    fn with_style(self, style: Rc<StyleTree>) -> Self {
+        let common = Self::base_tree(&style).style();
+
+        self.align_x(common.align_x())
+            .width(common.width())
+            .height(common.height())
+            .padding(common.padding())
+            .spacing(common.spacing())
+    }
+}
+
+impl<'a, Msg> WithStyle for iced::widget::Row<'a, Msg> {
+    const BASE_KEY: &'static str = "row";
+
+    fn with_style(self, style: Rc<StyleTree>) -> Self {
+        let common = Self::base_tree(&style).style();
+
+        self.align_y(common.align_y())
+            .width(common.width())
+            .height(common.height())
+            .padding(common.padding())
+            .spacing(common.spacing())
+    }
+}

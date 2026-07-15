@@ -14,6 +14,8 @@ pub struct CommonStyle {
     border: Border,
     /// Going: TL, TR, BR, BL
     padding: [f32; 4],
+
+    spacing: f32,
 }
 
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
@@ -40,6 +42,8 @@ impl Default for CommonStyle {
 
             border: Border::default(),
             padding: [0.0; 4],
+
+            spacing: 0.0,
         }
     }
 }
@@ -126,6 +130,10 @@ impl CommonStyle {
             bottom,
             left,
         }
+    }
+
+    pub fn spacing(&self) -> f32 {
+        self.spacing
     }
 
     pub fn inherit(&self, parent: &Self) -> Self {

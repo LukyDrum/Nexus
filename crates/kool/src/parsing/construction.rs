@@ -78,6 +78,14 @@ impl<'a> TryFrom<ElementInConstruction<'a>> for KoolElement {
                 key: key_value!(key, values, Value::String(string) => string),
                 content: content!(inner, ElementContent::Element(content) => content),
             }),
+            "Column" => Self::Column(kool::Column {
+                key: key_value!(key, values, Value::String(string) => string),
+                content: content!(inner, ElementContent::Multiple(content) => content),
+            }),
+            "Row" => Self::Row(kool::Row {
+                key: key_value!(key, values, Value::String(string) => string),
+                content: content!(inner, ElementContent::Multiple(content) => content),
+            }),
             _ => return Err(ElementConstructionError::UnknownElement(ident)),
         };
 
