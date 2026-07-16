@@ -78,11 +78,19 @@ impl<'a> TryFrom<ElementInConstruction<'a>> for KoolElement {
                 key: key_value!(key, values, Value::String(string) => string),
                 content: content!(inner, ElementContent::Element(content) => content),
             }),
+            "Image" => Self::Image(kool::Image {
+                key: key_value!(key, values, Value::String(string) => string),
+                file: content!(inner, ElementContent::Value(Value::String(string)) => string),
+            }),
             "Column" => Self::Column(kool::Column {
                 key: key_value!(key, values, Value::String(string) => string),
                 content: content!(inner, ElementContent::Multiple(content) => content),
             }),
             "Row" => Self::Row(kool::Row {
+                key: key_value!(key, values, Value::String(string) => string),
+                content: content!(inner, ElementContent::Multiple(content) => content),
+            }),
+            "Stack" => Self::Stack(kool::Stack {
                 key: key_value!(key, values, Value::String(string) => string),
                 content: content!(inner, ElementContent::Multiple(content) => content),
             }),

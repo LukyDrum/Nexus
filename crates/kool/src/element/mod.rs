@@ -4,13 +4,17 @@ use crate::{elemental::ElementalMessage, style::StyleTree};
 
 mod column;
 mod container;
+mod image;
 mod row;
+mod stack;
 mod text;
 
 pub mod kool {
     pub use super::column::Column;
     pub use super::container::Container;
+    pub use super::image::Image;
     pub use super::row::Row;
+    pub use super::stack::Stack;
     pub use super::text::Text;
 }
 
@@ -34,10 +38,12 @@ pub enum KoolElement {
     /* BASIC */
     Text(kool::Text),
     Container(kool::Container),
+    Image(kool::Image),
 
     /* LAYOUT */
     Column(kool::Column),
     Row(kool::Row),
+    Stack(kool::Stack),
 }
 
 impl KoolBuilder for KoolElement {
@@ -47,8 +53,10 @@ impl KoolBuilder for KoolElement {
         match self {
             KoolElement::Text(text) => text.build(context).into(),
             KoolElement::Container(container) => container.build(context).into(),
+            KoolElement::Image(image) => image.build(context).into(),
             KoolElement::Column(column) => column.build(context).into(),
             KoolElement::Row(row) => row.build(context).into(),
+            KoolElement::Stack(stack) => stack.build(context).into(),
         }
     }
 }

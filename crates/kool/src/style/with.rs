@@ -229,3 +229,13 @@ impl<'a, Msg> WithStyle for iced::widget::Row<'a, Msg> {
             .spacing(common.spacing())
     }
 }
+
+impl<'a, Msg> WithStyle for iced::widget::Stack<'a, Msg> {
+    const BASE_KEY: &'static str = "stack";
+
+    fn with_style(self, style: Rc<StyleTree>) -> Self {
+        let common = Self::base_tree(&style).style();
+
+        self.width(common.width()).height(common.height())
+    }
+}
