@@ -4,6 +4,7 @@ use crate::{elemental::ElementalMessage, style::StyleTree};
 
 mod column;
 mod container;
+pub(crate) mod environment;
 mod image;
 mod output;
 mod row;

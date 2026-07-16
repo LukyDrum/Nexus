@@ -21,7 +21,7 @@
 use crate::{
     element::KoolElement,
     parsing::{
-        parser::{ParserError, parse},
+        parser::{ParserContext, ParserError, parse},
         scanner::{ScannerError, scan},
     },
 };
@@ -43,7 +43,13 @@ pub enum ParsingError<'a> {
     Parser(ParserError<'a>),
 }
 
-pub fn scan_and_parse<'a>(input: &'a str) -> Result<KoolElement, ParsingError<'a>> {
+pub fn scan_and_parse<'a>(
+    input: &'a str,
+) -> Result<(ParserContext, KoolElement), ParsingError<'a>> {
     let tokens = scan(input).map_err(ParsingError::Scanner)?;
-    parse(tokens.into_iter()).map_err(ParsingError::Parser)
+
+    let mut context = ParserContext::default();
+    let element = parse(tokens.into_iter(), &mut context).map_err(ParsingError::Parser)?;
+
+    Ok((context, element))
 }

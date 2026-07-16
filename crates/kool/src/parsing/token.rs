@@ -1,23 +1,19 @@
-use crate::parsing::Metadata;
+use crate::{element::environment::Value, parsing::Metadata};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Token<'a> {
-    Ident(&'a str),   // eg. Text
-    Value(Value<'a>), // eg. "Hello world"
-    LeftParen,        // (
-    RightParen,       // )
-    LeftBracket,      // [
-    RightBracket,     // ]
-    Equal,            // =
-    Comma,            // ,
+    Ident(&'a str),    // eg. Text
+    Value(Value),      // eg. "Hello world"
+    Variable(&'a str), // eg. $count
+    LeftParen,         // (
+    RightParen,        // )
+    LeftBracket,       // [
+    RightBracket,      // ]
+    Equal,             // =
+    Comma,             // ,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum Value<'a> {
-    String(&'a str),
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct TokenWithMeta<'a> {
     pub token: Token<'a>,
     pub meta: Metadata,

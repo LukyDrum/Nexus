@@ -1,30 +1,31 @@
 use std::collections::HashMap;
 
+use crate::element::environment::Value;
+use crate::parsing::parser::ParserContext;
 use crate::{
     element::{KoolElement, kool},
-    parsing::token::Value,
     scan_and_parse,
 };
 
 #[derive(Clone, Debug)]
 pub enum ElementConstructionError<'a> {
-    ExtraKeyValues(HashMap<&'a str, Value<'a>>),
+    ExtraKeyValues(HashMap<&'a str, Value>),
     Import(String),
-    InvalidElementContent(ElementContent<'a>),
-    InvalidValueForKey { key: &'static str, value: Value<'a> },
+    InvalidElementContent(ElementContent),
+    InvalidValueForKey { key: &'static str, value: Value },
     UnknownElement(&'a str),
 }
 
 pub(super) struct ElementInConstruction<'a> {
     pub ident: &'a str,
-    pub values: HashMap<&'a str, Value<'a>>,
-    pub inner: ElementContent<'a>,
+    pub values: HashMap<&'a str, Value>,
+    pub inner: ElementContent,
 }
 
 #[derive(Clone, Debug)]
-pub enum ElementContent<'a> {
+pub enum ElementContent {
     Empty,
-    Value(Value<'a>),
+    Value(Value),
     Element(KoolElement),
     Multiple(Vec<KoolElement>),
 }
@@ -54,47 +55,48 @@ macro_rules! content {
     };
 }
 
-impl<'a> TryFrom<ElementInConstruction<'a>> for KoolElement {
-    type Error = ElementConstructionError<'a>;
-
-    #[allow(unreachable_patterns)]
-    fn try_from(
-        ElementInConstruction {
+impl<'a> ElementInConstruction<'a> {
+    pub(super) fn try_construct(
+        self,
+        context: &mut ParserContext,
+    ) -> Result<KoolElement, ElementConstructionError<'a>> {
+        let ElementInConstruction {
             ident,
             mut values,
             inner,
-        }: ElementInConstruction<'a>,
-    ) -> Result<Self, Self::Error> {
+        } = self;
+
+        #[expect(unreachable_patterns, reason = "The variants will grow in future")]
         let element = match ident {
             "Import" => {
                 let file = content!(inner, ElementContent::Value(Value::String(file)) => file);
-                resolve_import(file)?
+                resolve_import(file, context)?
             }
-            "Text" => Self::Text(kool::Text {
+            "Text" => KoolElement::Text(kool::Text {
                 key: key_value!(key, values, Value::String(string) => string),
                 content: content!(inner, ElementContent::Value(Value::String(content)) => content),
             }),
-            "Container" => Self::Container(kool::Container {
+            "Container" => KoolElement::Container(kool::Container {
                 key: key_value!(key, values, Value::String(string) => string),
                 content: content!(inner, ElementContent::Element(content) => content),
             }),
-            "Image" => Self::Image(kool::Image {
+            "Image" => KoolElement::Image(kool::Image {
                 key: key_value!(key, values, Value::String(string) => string),
                 file: content!(inner, ElementContent::Value(Value::String(string)) => string),
             }),
-            "Column" => Self::Column(kool::Column {
+            "Column" => KoolElement::Column(kool::Column {
                 key: key_value!(key, values, Value::String(string) => string),
                 content: content!(inner, ElementContent::Multiple(content) => content),
             }),
-            "Row" => Self::Row(kool::Row {
+            "Row" => KoolElement::Row(kool::Row {
                 key: key_value!(key, values, Value::String(string) => string),
                 content: content!(inner, ElementContent::Multiple(content) => content),
             }),
-            "Stack" => Self::Stack(kool::Stack {
+            "Stack" => KoolElement::Stack(kool::Stack {
                 key: key_value!(key, values, Value::String(string) => string),
                 content: content!(inner, ElementContent::Multiple(content) => content),
             }),
-            "Output" => Self::Output(kool::Output {
+            "Output" => KoolElement::Output(kool::Output {
                 key: key_value!(key, values, Value::String(string) => string),
                 command: content!(inner, ElementContent::Value(Value::String(string)) => string),
             }),
@@ -110,8 +112,16 @@ impl<'a> TryFrom<ElementInConstruction<'a>> for KoolElement {
 }
 
 // The stringification of the errors is not ideal... However it fixes the troubles with lifetimes.
-fn resolve_import(filename: String) -> Result<KoolElement, ElementConstructionError<'static>> {
+fn resolve_import(
+    filename: String,
+    context: &mut ParserContext,
+) -> Result<KoolElement, ElementConstructionError<'static>> {
     let input = std::fs::read_to_string(filename)
         .map_err(|error| ElementConstructionError::Import(format!("{error}")))?;
-    scan_and_parse(&input).map_err(|error| ElementConstructionError::Import(format!("{error:?}")))
+    let (imported_context, element) = scan_and_parse(&input)
+        .map_err(|error| ElementConstructionError::Import(format!("{error:?}")))?;
+
+    context.extend(imported_context);
+
+    Ok(element)
 }

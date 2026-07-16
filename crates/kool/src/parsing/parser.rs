@@ -1,7 +1,10 @@
 use std::{collections::HashMap, iter::Peekable};
 
 use crate::{
-    element::KoolElement,
+    element::{
+        KoolElement,
+        environment::{RepeatingCommand, Value},
+    },
     parsing::{
         construction::{ElementConstructionError, ElementContent, ElementInConstruction},
         token::{Token, TokenWithMeta},
@@ -43,19 +46,39 @@ macro_rules! match_token {
     };
 }
 
+#[derive(Debug, Default)]
+pub struct ParserContext {
+    pub variables: HashMap<String, Value>,
+    pub commands: Vec<RepeatingCommand>,
+}
+
+impl ParserContext {
+    pub fn extend(&mut self, other: ParserContext) {
+        let ParserContext {
+            variables,
+            commands,
+        } = other;
+
+        self.variables.extend(variables.into_iter());
+        self.commands.extend(commands.into_iter());
+    }
+}
+
 pub(super) fn parse<'a>(
     tokens: impl Iterator<Item = TokenWithMeta<'a>>,
+    context: &mut ParserContext,
 ) -> Result<KoolElement, ParserError<'a>> {
     let mut tokens = tokens.peekable();
 
     let ident =
         match_token!(tokens.next(), Token::Ident(ident) => ident, expected = "Element identifier");
-    parse_element(&mut tokens, ident)
+    parse_element(&mut tokens, ident, context)
 }
 
 fn parse_element<'a>(
     tokens: &mut Peekable<impl Iterator<Item = TokenWithMeta<'a>>>,
     ident: &'a str,
+    context: &mut ParserContext,
 ) -> Result<KoolElement, ParserError<'a>> {
     match_token!(tokens.next(), Token::LeftParen);
 
@@ -64,16 +87,19 @@ fn parse_element<'a>(
         values: HashMap::new(),
         inner: ElementContent::Empty,
     };
-    parse_body(tokens, &mut element)?;
+    parse_body(tokens, &mut element, context)?;
 
     match_token!(tokens.next(), Token::RightParen);
 
-    KoolElement::try_from(element).map_err(ParserError::Construction)
+    element
+        .try_construct(context)
+        .map_err(ParserError::Construction)
 }
 
 fn parse_body<'a>(
     tokens: &mut Peekable<impl Iterator<Item = TokenWithMeta<'a>>>,
     element: &mut ElementInConstruction<'a>,
+    context: &mut ParserContext,
 ) -> Result<(), ParserError<'a>> {
     // Possibly parse things needing to only know the first token
     let ident = match tokens.next() {
@@ -85,7 +111,7 @@ fn parse_body<'a>(
             token: Token::LeftBracket,
             meta: _,
         }) => {
-            let elements = parse_elements_list(tokens)?;
+            let elements = parse_elements_list(tokens, context)?;
             element.inner = ElementContent::Multiple(elements);
             return Ok(());
         }
@@ -110,18 +136,18 @@ fn parse_body<'a>(
             token: Token::Equal,
             meta: _,
         }) => {
-            parse_key_value(tokens, element, ident)?;
-            parse_body(tokens, element)
+            parse_key_value(tokens, element, ident, context)?;
+            parse_body(tokens, element, context)
         }
         Some(TokenWithMeta {
             token: Token::LeftParen,
             meta: _,
         }) => {
-            let inner_element = parse_element(tokens, ident)?;
+            let inner_element = parse_element(tokens, ident, context)?;
             element.inner = ElementContent::Element(inner_element);
             Ok(())
         }
-        Some(token) => Err(ParserError::UnexpectedToken(*token)),
+        Some(token) => Err(ParserError::UnexpectedToken(token.clone())),
         None => Err(ParserError::UnexpectedEof {
             expected: "Key value pair or Element body".to_owned(),
         }),
@@ -132,6 +158,7 @@ fn parse_key_value<'a>(
     tokens: &mut Peekable<impl Iterator<Item = TokenWithMeta<'a>>>,
     element: &mut ElementInConstruction<'a>,
     key: &'a str,
+    _context: &mut ParserContext,
 ) -> Result<(), ParserError<'a>> {
     match_token!(tokens.next(), Token::Equal);
     let value = match_token!(tokens.next(), Token::Value(value) => value, expected = "Some value");
@@ -146,6 +173,7 @@ fn parse_key_value<'a>(
 
 fn parse_elements_list<'a>(
     tokens: &mut Peekable<impl Iterator<Item = TokenWithMeta<'a>>>,
+    context: &mut ParserContext,
 ) -> Result<Vec<KoolElement>, ParserError<'a>> {
     let mut elements = Vec::new();
     loop {
@@ -161,7 +189,7 @@ fn parse_elements_list<'a>(
             Some(TokenWithMeta {
                 token: Token::Ident(ident),
                 meta: _,
-            }) => elements.push(parse_element(tokens, ident)?),
+            }) => elements.push(parse_element(tokens, ident, context)?),
             Some(token) => return Err(ParserError::UnexpectedToken(token)),
             None => {
                 return Err(ParserError::UnexpectedEof {

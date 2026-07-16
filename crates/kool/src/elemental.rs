@@ -34,7 +34,9 @@ pub struct ElementalWidget {
 }
 
 #[derive(Clone, Debug)]
-pub enum ElementalMessage {}
+pub enum ElementalMessage {
+    Empty,
+}
 
 impl KoolWidget<ElementalMessage> for ElementalWidget {
     fn name(&self) -> String {
@@ -45,8 +47,10 @@ impl KoolWidget<ElementalMessage> for ElementalWidget {
         self.settings.clone()
     }
 
-    fn update(&mut self, _message: ElementalMessage) -> iced::Task<ElementalMessage> {
-        iced::Task::none()
+    fn update(&mut self, message: ElementalMessage) -> iced::Task<ElementalMessage> {
+        match message {
+            ElementalMessage::Empty => iced::Task::none(),
+        }
     }
 
     fn view(&'_ self) -> impl Into<iced::Element<'_, ElementalMessage>> {

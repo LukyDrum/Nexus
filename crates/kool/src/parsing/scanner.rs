@@ -1,10 +1,12 @@
+use crate::element::environment::Value;
 use crate::parsing::{
     Metadata,
-    token::{Token, TokenWithMeta, Value},
+    token::{Token, TokenWithMeta},
 };
 
 #[derive(Clone, Debug)]
 pub enum ScannerError {
+    EmptyVarName(Metadata),
     UnexpectedChar(CharWithMeta),
     UnterminatedString(Metadata),
 }
@@ -46,6 +48,22 @@ pub(super) fn scan<'a>(input: &'a str) -> Result<Vec<TokenWithMeta<'a>>, Scanner
             ']' => Token::RightBracket,
             '=' => Token::Equal,
             ',' => Token::Comma,
+            '$' => {
+                let start = index + 1;
+                let mut end = start;
+                while chars
+                    .next_if(|(_, CharWithMeta { char, .. })| is_ident_char(*char))
+                    .is_some()
+                {
+                    end += 1;
+                }
+
+                if start == end {
+                    return Err(ScannerError::EmptyVarName(meta));
+                }
+
+                Token::Variable(&input[start..=end])
+            }
             quote @ ('"' | '\'') => {
                 let Some(string) = scan_string(input, index, quote) else {
                     return Err(ScannerError::UnterminatedString(meta));
@@ -56,7 +74,7 @@ pub(super) fn scan<'a>(input: &'a str) -> Result<Vec<TokenWithMeta<'a>>, Scanner
                     let _ = chars.next();
                 }
 
-                Token::Value(Value::String(string))
+                Token::Value(Value::String(string.to_owned()))
             }
             c if c.is_whitespace() => continue,
             c if is_ident_char(c) => {
@@ -99,5 +117,5 @@ fn scan_string(input: &str, start_index: usize, start_quote: char) -> Option<&st
 }
 
 fn is_ident_char(char: char) -> bool {
-    char.is_alphanumeric() || char == '_'
+    char.is_alphabetic() || char == '_'
 }

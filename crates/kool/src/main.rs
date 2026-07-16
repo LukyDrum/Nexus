@@ -13,7 +13,7 @@ fn main() {
     config_path.pop();
     std::env::set_current_dir(config_path).expect("Failed to change current working directory.");
 
-    let root = scan_and_parse(&config.kool).expect("Failed to parse kool.");
+    let (_context, root) = scan_and_parse(&config.kool).expect("Failed to parse kool.");
 
     let widget = ElementalWidget {
         name: config.name,
