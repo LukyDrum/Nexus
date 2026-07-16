@@ -49,19 +49,16 @@ macro_rules! match_token {
 
 #[derive(Debug, Default)]
 pub struct ParserContext {
+    next_id: u32,
     pub variables: Variables,
     pub commands: Vec<RepeatingCommand>,
 }
 
 impl ParserContext {
-    pub fn extend(&mut self, other: ParserContext) {
-        let ParserContext {
-            variables,
-            commands,
-        } = other;
-
-        self.variables.extend(variables);
-        self.commands.extend(commands);
+    pub fn claim_id(&mut self) -> u32 {
+        let id = self.next_id;
+        self.next_id += 1;
+        id
     }
 }
 
@@ -97,7 +94,7 @@ fn parse_var_def<'a>(
         return Err(ParserError::ExpectedValue);
     };
 
-    context.variables.set(name.to_owned(), value);
+    context.variables.set(name, value);
 
     Ok(())
 }

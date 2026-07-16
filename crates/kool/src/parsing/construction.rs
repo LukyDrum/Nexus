@@ -1,11 +1,10 @@
 use std::collections::HashMap;
+use std::time::Duration;
 
-use crate::element::environment::{UnresolvedValue, Value};
+use crate::element::environment::{RepeatingCommand, UnresolvedValue, Value};
+use crate::element::{KoolElement, kool};
 use crate::parsing::parser::ParserContext;
-use crate::{
-    element::{KoolElement, kool},
-    scan_and_parse,
-};
+use crate::parsing::scan_and_parse_with_context;
 
 #[derive(Clone, Debug)]
 pub enum ElementConstructionError<'a> {
@@ -36,17 +35,20 @@ pub enum ElementContent {
 
 macro_rules! key_value {
     ($key:ident, $map:expr, $pat:pat => $value:ident) => {
-        match $map.remove(stringify!($key)) {
-            Some($pat) => $value.into(),
-            Some(value) => {
-                return Err(ElementConstructionError::InvalidValueForKey {
-                    key: stringify!($key),
-                    value,
-                })
-            }
-            None => Default::default(),
-        }
+        key_value!($key, $map, $pat => $value, Default::default())
     };
+    ($key:ident, $map:expr, $pat:pat => $value:ident, $default:expr) => {
+         match $map.remove(stringify!($key)) {
+             Some($pat) => $value.into(),
+             Some(value) => {
+                 return Err(ElementConstructionError::InvalidValueForKey {
+                     key: stringify!($key),
+                     value,
+                 })
+             }
+             None => $default,
+         }
+     };
 }
 
 macro_rules! content {
@@ -76,6 +78,25 @@ impl<'a> ElementInConstruction<'a> {
                 let file = content!(inner, ElementContent::Value(Value::String(file)) => file);
                 resolve_import(file, context)?
             }
+            "Output" => {
+                let refresh: i64 = key_value!(refresh, values, UnresolvedValue::Value(Value::Number(number)) => number, 5);
+                let command =
+                    content!(inner, ElementContent::Value(Value::String(command)) => command);
+
+                let internal_var = format!("__output_{}", context.claim_id());
+                context.variables.set(&internal_var, Value::Null);
+                context.commands.push(RepeatingCommand {
+                    period: Duration::from_secs(refresh as u64),
+                    variable: internal_var.clone(),
+                    command,
+                });
+
+                KoolElement::Text(kool::Text {
+                    key: key_value!(key, values, UnresolvedValue::Value(Value::String(string)) => string),
+                    content: UnresolvedValue::Variable(internal_var),
+                })
+            }
+
             /* REGULAR */
             "Text" => KoolElement::Text(kool::Text {
                 key: key_value!(key, values, UnresolvedValue::Value(Value::String(string)) => string),
@@ -126,10 +147,7 @@ fn resolve_import(
 ) -> Result<KoolElement, ElementConstructionError<'static>> {
     let input = std::fs::read_to_string(filename)
         .map_err(|error| ElementConstructionError::Import(format!("{error}")))?;
-    let (imported_context, element) = scan_and_parse(&input)
-        .map_err(|error| ElementConstructionError::Import(format!("{error:?}")))?;
 
-    context.extend(imported_context);
-
-    Ok(element)
+    scan_and_parse_with_context(&input, context)
+        .map_err(|error| ElementConstructionError::Import(format!("{error:?}")))
 }

@@ -41,18 +41,26 @@ pub struct Metadata {
 }
 
 #[derive(Clone, Debug)]
-pub enum ParsingError<'a> {
+pub enum ScanAndParserError<'a> {
     Scanner(ScannerError),
     Parser(ParserError<'a>),
 }
 
 pub fn scan_and_parse<'a>(
     input: &'a str,
-) -> Result<(ParserContext, KoolElement), ParsingError<'a>> {
-    let tokens = scan(input).map_err(ParsingError::Scanner)?;
+) -> Result<(ParserContext, KoolElement), ScanAndParserError<'a>> {
+    let tokens = scan(input).map_err(ScanAndParserError::Scanner)?;
 
     let mut context = ParserContext::default();
-    let element = parse(tokens.into_iter(), &mut context).map_err(ParsingError::Parser)?;
+    let element = parse(tokens.into_iter(), &mut context).map_err(ScanAndParserError::Parser)?;
 
     Ok((context, element))
+}
+
+pub(super) fn scan_and_parse_with_context<'a>(
+    input: &'a str,
+    context: &mut ParserContext,
+) -> Result<KoolElement, ScanAndParserError<'a>> {
+    let tokens = scan(input).map_err(ScanAndParserError::Scanner)?;
+    parse(tokens.into_iter(), context).map_err(ScanAndParserError::Parser)
 }

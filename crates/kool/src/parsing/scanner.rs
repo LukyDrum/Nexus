@@ -1,3 +1,5 @@
+use std::num::ParseIntError;
+
 use crate::element::environment::Value;
 use crate::parsing::{
     Metadata,
@@ -7,6 +9,7 @@ use crate::parsing::{
 #[derive(Clone, Debug)]
 pub enum ScannerError {
     EmptyVarName(Metadata),
+    NumberParse(ParseIntError),
     UnexpectedChar(CharWithMeta),
     UnterminatedString(Metadata),
 }
@@ -75,6 +78,22 @@ pub(super) fn scan<'a>(input: &'a str) -> Result<Vec<TokenWithMeta<'a>>, Scanner
                 }
 
                 Token::Value(Value::String(string.to_owned()))
+            }
+            c if c.is_ascii_digit() => {
+                let start = index;
+                let mut end = start;
+                while chars
+                    .next_if(|(_, CharWithMeta { char, .. })| char.is_ascii_digit())
+                    .is_some()
+                {
+                    end += 1;
+                }
+
+                let num = input[start..=end]
+                    .parse()
+                    .map_err(ScannerError::NumberParse)?;
+
+                Token::Value(Value::Number(num))
             }
             c if c.is_whitespace() => continue,
             c if is_ident_char(c) => {

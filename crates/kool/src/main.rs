@@ -21,6 +21,7 @@ fn main() {
         style: config.visual,
         root,
         variables: context.variables,
+        commands: context.commands,
     };
 
     KoolWidgetRunner::run(widget).expect("Failed to run widget.");

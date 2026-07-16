@@ -2,7 +2,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     KoolWidget,
-    element::{BuildContext, KoolBuilder, KoolElement, environment::Variables},
+    element::{
+        BuildContext, KoolBuilder, KoolElement,
+        environment::{RepeatingCommand, Variables},
+    },
     settings::WidgetSettings,
     style::WidgetStyle,
 };
@@ -32,11 +35,13 @@ pub struct ElementalWidget {
     pub style: WidgetStyle,
     pub root: KoolElement,
     pub variables: Variables,
+    pub commands: Vec<RepeatingCommand>,
 }
 
 #[derive(Clone, Debug)]
 pub enum ElementalMessage {
     Empty,
+    RepeatingCommandTick(usize),
 }
 
 impl KoolWidget<ElementalMessage> for ElementalWidget {
@@ -51,6 +56,13 @@ impl KoolWidget<ElementalMessage> for ElementalWidget {
     fn update(&mut self, message: ElementalMessage) -> iced::Task<ElementalMessage> {
         match message {
             ElementalMessage::Empty => iced::Task::none(),
+            ElementalMessage::RepeatingCommandTick(index) => {
+                let command = &self.commands[index];
+                let output_value = command.run_or_null();
+                self.variables.set(&command.variable, output_value);
+
+                iced::Task::none()
+            }
         }
     }
 
@@ -63,5 +75,19 @@ impl KoolWidget<ElementalMessage> for ElementalWidget {
 
     fn style(&self) -> &crate::style::WidgetStyle {
         &self.style
+    }
+
+    fn startup_task(&self) -> iced::Task<ElementalMessage> {
+        iced::Task::batch(self.commands.iter().enumerate().map(|(index, _command)| {
+            iced::Task::done(ElementalMessage::RepeatingCommandTick(index))
+        }))
+    }
+
+    fn subscription(&self) -> iced::Subscription<ElementalMessage> {
+        iced::Subscription::batch(self.commands.iter().enumerate().map(|(index, command)| {
+            iced::time::every(command.period)
+                .with(index)
+                .map(|(index, _instant)| ElementalMessage::RepeatingCommandTick(index))
+        }))
     }
 }
