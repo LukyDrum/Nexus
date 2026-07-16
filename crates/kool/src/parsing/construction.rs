@@ -94,6 +94,10 @@ impl<'a> TryFrom<ElementInConstruction<'a>> for KoolElement {
                 key: key_value!(key, values, Value::String(string) => string),
                 content: content!(inner, ElementContent::Multiple(content) => content),
             }),
+            "Output" => Self::Output(kool::Output {
+                key: key_value!(key, values, Value::String(string) => string),
+                command: content!(inner, ElementContent::Value(Value::String(string)) => string),
+            }),
             _ => return Err(ElementConstructionError::UnknownElement(ident)),
         };
 
