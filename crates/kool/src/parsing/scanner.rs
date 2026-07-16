@@ -62,7 +62,7 @@ pub(super) fn scan<'a>(input: &'a str) -> Result<Vec<TokenWithMeta<'a>>, Scanner
                     return Err(ScannerError::EmptyVarName(meta));
                 }
 
-                Token::Variable(&input[start..=end])
+                Token::Variable(input[start..end].to_owned())
             }
             quote @ ('"' | '\'') => {
                 let Some(string) = scan_string(input, index, quote) else {

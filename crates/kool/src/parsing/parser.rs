@@ -3,7 +3,7 @@ use std::{collections::HashMap, iter::Peekable};
 use crate::{
     element::{
         KoolElement,
-        environment::{RepeatingCommand, Value},
+        environment::{RepeatingCommand, UnresolvedValue, Variables},
     },
     parsing::{
         construction::{ElementConstructionError, ElementContent, ElementInConstruction},
@@ -16,6 +16,7 @@ pub enum ParserError<'a> {
     Construction(ElementConstructionError<'a>),
     UnexpectedToken(TokenWithMeta<'a>),
     UnexpectedEof { expected: String },
+    ExpectedValue,
 }
 
 macro_rules! match_token {
@@ -48,7 +49,7 @@ macro_rules! match_token {
 
 #[derive(Debug, Default)]
 pub struct ParserContext {
-    pub variables: HashMap<String, Value>,
+    pub variables: Variables,
     pub commands: Vec<RepeatingCommand>,
 }
 
@@ -59,10 +60,12 @@ impl ParserContext {
             commands,
         } = other;
 
-        self.variables.extend(variables.into_iter());
-        self.commands.extend(commands.into_iter());
+        self.variables.extend(variables);
+        self.commands.extend(commands);
     }
 }
+
+const VAR_DEF_KEYWORD: &str = "def";
 
 pub(super) fn parse<'a>(
     tokens: impl Iterator<Item = TokenWithMeta<'a>>,
@@ -70,9 +73,33 @@ pub(super) fn parse<'a>(
 ) -> Result<KoolElement, ParserError<'a>> {
     let mut tokens = tokens.peekable();
 
-    let ident =
-        match_token!(tokens.next(), Token::Ident(ident) => ident, expected = "Element identifier");
-    parse_element(&mut tokens, ident, context)
+    loop {
+        let ident = match_token!(tokens.next(), Token::Ident(ident) => ident, expected = "Element identifier");
+
+        match ident {
+            VAR_DEF_KEYWORD => parse_var_def(&mut tokens, context)?,
+            ident => {
+                return parse_element(&mut tokens, ident, context);
+            }
+        }
+    }
+}
+
+fn parse_var_def<'a>(
+    tokens: &mut Peekable<impl Iterator<Item = TokenWithMeta<'a>>>,
+    context: &mut ParserContext,
+) -> Result<(), ParserError<'a>> {
+    let name = match_token!(tokens.next(), Token::Ident(name) => name, expected = "Variable name");
+
+    match_token!(tokens.next(), Token::Equal);
+
+    let UnresolvedValue::Value(value) = parse_value(tokens)? else {
+        return Err(ParserError::ExpectedValue);
+    };
+
+    context.variables.set(name.to_owned(), value);
+
+    Ok(())
 }
 
 fn parse_element<'a>(
@@ -122,6 +149,13 @@ fn parse_body<'a>(
             element.inner = ElementContent::Value(value);
             return Ok(());
         }
+        Some(TokenWithMeta {
+            token: Token::Variable(variable),
+            meta: _,
+        }) => {
+            element.inner = ElementContent::Variable(variable);
+            return Ok(());
+        }
         Some(token) => return Err(ParserError::UnexpectedToken(token)),
         None => {
             return Err(ParserError::UnexpectedEof {
@@ -161,14 +195,33 @@ fn parse_key_value<'a>(
     _context: &mut ParserContext,
 ) -> Result<(), ParserError<'a>> {
     match_token!(tokens.next(), Token::Equal);
-    let value = match_token!(tokens.next(), Token::Value(value) => value, expected = "Some value");
 
+    let value = parse_value(tokens)?;
     element.values.insert(key, value);
 
     // Discard possible comma
     let _ = tokens.next_if(|TokenWithMeta { token, meta: _ }| matches!(token, Token::Comma));
 
     Ok(())
+}
+
+fn parse_value<'a>(
+    tokens: &mut Peekable<impl Iterator<Item = TokenWithMeta<'a>>>,
+) -> Result<UnresolvedValue, ParserError<'a>> {
+    match tokens.next() {
+        Some(TokenWithMeta {
+            token: Token::Value(value),
+            ..
+        }) => Ok(UnresolvedValue::Value(value)),
+        Some(TokenWithMeta {
+            token: Token::Variable(variable),
+            ..
+        }) => Ok(UnresolvedValue::Variable(variable.to_owned())),
+        Some(token) => Err(ParserError::UnexpectedToken(token)),
+        None => Err(ParserError::UnexpectedEof {
+            expected: "Some value".to_owned(),
+        }),
+    }
 }
 
 fn parse_elements_list<'a>(

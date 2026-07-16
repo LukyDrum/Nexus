@@ -6,6 +6,9 @@
 //! This subset can change over time as new elements are added, or removed, from the Kool elements.
 //!
 //! ```
+//! start        -> varDef start
+//!              -> element
+//! varDef       -> 'def' Ident value
 //! element      -> Ident ( body )
 //! body         -> keyPair, body
 //!              -> content

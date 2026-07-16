@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     KoolWidget,
-    element::{BuildContext, KoolBuilder, KoolElement},
+    element::{BuildContext, KoolBuilder, KoolElement, environment::Variables},
     settings::WidgetSettings,
     style::WidgetStyle,
 };
@@ -31,6 +31,7 @@ pub struct ElementalWidget {
     pub settings: WidgetSettings,
     pub style: WidgetStyle,
     pub root: KoolElement,
+    pub variables: Variables,
 }
 
 #[derive(Clone, Debug)]
@@ -56,6 +57,7 @@ impl KoolWidget<ElementalMessage> for ElementalWidget {
     fn view(&'_ self) -> impl Into<iced::Element<'_, ElementalMessage>> {
         self.root.build(BuildContext {
             style: self.style.style_tree(),
+            variables: &self.variables,
         })
     }
 

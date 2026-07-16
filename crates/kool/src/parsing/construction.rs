@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::element::environment::Value;
+use crate::element::environment::{UnresolvedValue, Value};
 use crate::parsing::parser::ParserContext;
 use crate::{
     element::{KoolElement, kool},
@@ -9,16 +9,19 @@ use crate::{
 
 #[derive(Clone, Debug)]
 pub enum ElementConstructionError<'a> {
-    ExtraKeyValues(HashMap<&'a str, Value>),
+    ExtraKeyValues(HashMap<&'a str, UnresolvedValue>),
     Import(String),
     InvalidElementContent(ElementContent),
-    InvalidValueForKey { key: &'static str, value: Value },
+    InvalidValueForKey {
+        key: &'static str,
+        value: UnresolvedValue,
+    },
     UnknownElement(&'a str),
 }
 
 pub(super) struct ElementInConstruction<'a> {
     pub ident: &'a str,
-    pub values: HashMap<&'a str, Value>,
+    pub values: HashMap<&'a str, UnresolvedValue>,
     pub inner: ElementContent,
 }
 
@@ -26,6 +29,7 @@ pub(super) struct ElementInConstruction<'a> {
 pub enum ElementContent {
     Empty,
     Value(Value),
+    Variable(String),
     Element(KoolElement),
     Multiple(Vec<KoolElement>),
 }
@@ -66,40 +70,44 @@ impl<'a> ElementInConstruction<'a> {
             inner,
         } = self;
 
-        #[expect(unreachable_patterns, reason = "The variants will grow in future")]
         let element = match ident {
+            /* SPECIAL */
             "Import" => {
                 let file = content!(inner, ElementContent::Value(Value::String(file)) => file);
                 resolve_import(file, context)?
             }
+            /* REGULAR */
             "Text" => KoolElement::Text(kool::Text {
-                key: key_value!(key, values, Value::String(string) => string),
-                content: content!(inner, ElementContent::Value(Value::String(content)) => content),
+                key: key_value!(key, values, UnresolvedValue::Value(Value::String(string)) => string),
+                content: match inner {
+                    ElementContent::Value(value) => UnresolvedValue::Value(value),
+                    ElementContent::Variable(variable) => UnresolvedValue::Variable(variable),
+                    content => {
+                        return Err(ElementConstructionError::InvalidElementContent(content));
+                    }
+                },
             }),
             "Container" => KoolElement::Container(kool::Container {
-                key: key_value!(key, values, Value::String(string) => string),
+                key: key_value!(key, values, UnresolvedValue::Value(Value::String(string)) => string),
                 content: content!(inner, ElementContent::Element(content) => content),
             }),
             "Image" => KoolElement::Image(kool::Image {
-                key: key_value!(key, values, Value::String(string) => string),
+                key: key_value!(key, values, UnresolvedValue::Value(Value::String(string)) => string),
                 file: content!(inner, ElementContent::Value(Value::String(string)) => string),
             }),
             "Column" => KoolElement::Column(kool::Column {
-                key: key_value!(key, values, Value::String(string) => string),
+                key: key_value!(key, values, UnresolvedValue::Value(Value::String(string)) => string),
                 content: content!(inner, ElementContent::Multiple(content) => content),
             }),
             "Row" => KoolElement::Row(kool::Row {
-                key: key_value!(key, values, Value::String(string) => string),
+                key: key_value!(key, values, UnresolvedValue::Value(Value::String(string)) => string),
                 content: content!(inner, ElementContent::Multiple(content) => content),
             }),
             "Stack" => KoolElement::Stack(kool::Stack {
-                key: key_value!(key, values, Value::String(string) => string),
+                key: key_value!(key, values, UnresolvedValue::Value(Value::String(string)) => string),
                 content: content!(inner, ElementContent::Multiple(content) => content),
             }),
-            "Output" => KoolElement::Output(kool::Output {
-                key: key_value!(key, values, Value::String(string) => string),
-                command: content!(inner, ElementContent::Value(Value::String(string)) => string),
-            }),
+
             _ => return Err(ElementConstructionError::UnknownElement(ident)),
         };
 
