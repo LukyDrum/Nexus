@@ -48,6 +48,7 @@ impl<'a> WithStyle for iced::widget::Text<'a> {
             .line_height(common.line_height())
             .align_x(common.align_x())
             .align_y(common.align_y())
+            .font_maybe(common.font())
             .style(move |_theme| iced::widget::text::Style {
                 color: common.color(),
             })
@@ -112,6 +113,7 @@ where
             .size(common.text_size())
             .line_height(common.line_height())
             .align_x(common.align_x())
+            .font(common.font().unwrap_or_default())
             .style(move |theme, status| {
                 let common = base_tree.get(status);
                 let palette = theme.palette();

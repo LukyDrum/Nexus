@@ -1,6 +1,14 @@
-use serde::{Deserialize, Serialize};
+use std::{
+    collections::HashSet,
+    sync::{LazyLock, Mutex},
+};
+
+use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::style::Color;
+
+static FONT_CACHE: LazyLock<Mutex<HashSet<&'static str>>> =
+    LazyLock::new(|| Mutex::new(HashSet::new()));
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 #[serde(default)]
@@ -26,10 +34,33 @@ struct InheritableStyle {
     highlight: Option<Color>,
     opacity: Option<f32>,
 
+    font: Option<FontName>,
     text_size: Option<f32>,
     line_height: Option<f32>,
     align_x: Option<Align>,
     align_y: Option<Align>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
+struct FontName(&'static str);
+
+impl<'de> Deserialize<'de> for FontName {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let string = String::deserialize(deserializer)?;
+
+        let mut cache = FONT_CACHE.lock().unwrap();
+
+        if let Some(&static_str) = cache.get(string.as_str()) {
+            Ok(Self(static_str))
+        } else {
+            let leaked = string.leak();
+            cache.insert(leaked);
+            Ok(Self(leaked))
+        }
+    }
 }
 
 impl Default for CommonStyle {
@@ -67,6 +98,12 @@ impl CommonStyle {
 
     pub fn opacity(&self) -> f32 {
         self.inheritable.opacity.unwrap_or(1.0)
+    }
+
+    pub fn font(&self) -> Option<iced::font::Font> {
+        self.inheritable
+            .font
+            .map(|FontName(name)| iced::font::Font::with_name(name))
     }
 
     pub fn text_size(&self) -> f32 {
@@ -151,6 +188,7 @@ impl InheritableStyle {
             color: self.color.or(parent.color),
             highlight: self.highlight.or(parent.highlight),
             opacity: self.opacity.or(parent.opacity),
+            font: self.font.or(parent.font),
             text_size: self.text_size.or(parent.text_size),
             line_height: self.line_height.or(parent.line_height),
             align_x: self.align_x.or(parent.align_x),
