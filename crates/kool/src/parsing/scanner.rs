@@ -6,6 +6,8 @@ use crate::parsing::{
     token::{Token, TokenWithMeta},
 };
 
+const MULTILINE_STRING_SIGN: &str = r#"""""#;
+
 #[derive(Clone, Debug)]
 pub enum ScannerError {
     EmptyVarName(Metadata),
@@ -68,12 +70,25 @@ pub(super) fn scan<'a>(input: &'a str) -> Result<Vec<TokenWithMeta<'a>>, Scanner
                 Token::Variable(input[start..end].to_owned())
             }
             quote @ ('"' | '\'') => {
-                let Some(string) = scan_string(input, index, quote) else {
-                    return Err(ScannerError::UnterminatedString(meta));
+                let (string, skip) = if &input[index..index + 3] == MULTILINE_STRING_SIGN {
+                    let Some(string) = scan_multiline_string(input, index) else {
+                        return Err(ScannerError::UnterminatedString(meta));
+                    };
+
+                    (
+                        replace_escape_chars(&replace_consecutive_whitespace(string, Some(' '))),
+                        string.len() + 6,
+                    )
+                } else {
+                    let Some(string) = scan_string(input, index, quote) else {
+                        return Err(ScannerError::UnterminatedString(meta));
+                    };
+
+                    (replace_escape_chars(string), string.len() + 1)
                 };
 
                 // Skip over the string
-                for _ in 0..string.len() + 1 {
+                for _ in 0..skip {
                     let _ = chars.next();
                 }
 
@@ -135,6 +150,46 @@ fn scan_string(input: &str, start_index: usize, start_quote: char) -> Option<&st
     None
 }
 
+fn scan_multiline_string(input: &str, start_index: usize) -> Option<&str> {
+    let start = start_index + 3;
+    if start >= input.len() {
+        return None;
+    }
+
+    let mut end = start;
+    for index in start..input.len() - 2 {
+        if &input[index..index + 3] == MULTILINE_STRING_SIGN {
+            return Some(&input[start..end]);
+        } else {
+            end = index;
+        }
+    }
+
+    None
+}
+
 fn is_ident_char(char: char) -> bool {
     char.is_alphabetic() || char == '_'
+}
+
+fn replace_consecutive_whitespace(string: &str, replacement: Option<char>) -> String {
+    let mut output = String::with_capacity(string.len());
+    let mut last_whitespace = true;
+    for char in string.chars() {
+        if char.is_whitespace() {
+            if !last_whitespace {
+                output.push(replacement.unwrap_or(char));
+                last_whitespace = true;
+            }
+        } else {
+            output.push(char);
+            last_whitespace = false;
+        }
+    }
+
+    output
+}
+
+fn replace_escape_chars(string: &str) -> String {
+    string.replace("\\n", "\n")
 }
