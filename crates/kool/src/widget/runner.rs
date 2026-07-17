@@ -3,6 +3,7 @@ use std::{fmt::Debug, marker::PhantomData};
 use iced::widget::Container;
 use iced::{Element, Subscription, Task};
 
+use crate::settings::Rendering;
 use crate::style::WithStyle;
 use crate::widget::KoolWidget;
 use crate::widget::LayerShellAppMessage;
@@ -24,6 +25,8 @@ where
         let name = widget.name();
         let settings = widget.settings();
         let theme = widget.style().theme();
+
+        set_renderer(settings.rendering);
 
         iced_layershell::application(
             move || {
@@ -75,5 +78,17 @@ where
         self.widget
             .subscription()
             .map(LayerShellAppMessage::AppMessage)
+    }
+}
+
+fn set_renderer(renderer: Rendering) {
+    let renderer = match renderer {
+        Rendering::Cpu => "tiny-skia",
+        Rendering::Gpu => "wgpu",
+    };
+
+    // Trust me bro
+    unsafe {
+        std::env::set_var("ICED_BACKEND", renderer);
     }
 }

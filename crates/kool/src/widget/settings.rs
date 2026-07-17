@@ -11,6 +11,7 @@ pub struct WidgetSettings {
     pub exclusive_zone: i32,
     pub size: Size,
     pub margin: (i32, i32, i32, i32),
+    pub rendering: Rendering,
 }
 
 impl Default for WidgetSettings {
@@ -22,6 +23,7 @@ impl Default for WidgetSettings {
             exclusive_zone: 0,
             size: Size::Size(100, 100),
             margin: (0, 0, 0, 0),
+            rendering: Rendering::default(),
         }
     }
 }
@@ -105,4 +107,11 @@ impl From<Layer> for IcedShellLayer {
             Layer::Overlay => Self::Overlay,
         }
     }
+}
+
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub enum Rendering {
+    Cpu,
+    #[default]
+    Gpu,
 }
