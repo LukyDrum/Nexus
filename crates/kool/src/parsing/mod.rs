@@ -24,10 +24,11 @@
 use crate::{
     element::KoolElement,
     parsing::{
-        parser::{ParserContext, ParserError, parse},
+        parser::{ParserError, parse},
         scanner::{ScannerError, scan},
     },
 };
+pub use parser::ParserContext;
 
 mod construction;
 mod parser;
@@ -57,7 +58,7 @@ pub fn scan_and_parse<'a>(
     Ok((context, element))
 }
 
-pub(super) fn scan_and_parse_with_context<'a>(
+pub fn scan_and_parse_with_context<'a>(
     input: &'a str,
     context: &mut ParserContext,
 ) -> Result<KoolElement, ScanAndParserError<'a>> {

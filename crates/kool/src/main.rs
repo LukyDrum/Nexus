@@ -1,7 +1,10 @@
 use std::path::PathBuf;
 
 use clap::Parser;
-use kool::{ElementalArgs, ElementalConfig, ElementalWidget, KoolWidgetRunner, scan_and_parse};
+use kool::{
+    ElementalArgs, ElementalConfig, ElementalWidget, KoolWidgetRunner, ParserContext,
+    scan_and_parse_with_context,
+};
 
 fn main() {
     let args = ElementalArgs::parse();
@@ -13,7 +16,13 @@ fn main() {
     config_path.pop();
     std::env::set_current_dir(config_path).expect("Failed to change current working directory.");
 
-    let (context, root) = scan_and_parse(&config.kool).expect("Failed to parse kool.");
+    let mut context = ParserContext::default();
+    for pair in args.var {
+        context.variables.set(&pair.name, pair.value);
+    }
+
+    let root =
+        scan_and_parse_with_context(&config.kool, &mut context).expect("Failed to parse kool.");
 
     let widget = ElementalWidget {
         name: config.name,
