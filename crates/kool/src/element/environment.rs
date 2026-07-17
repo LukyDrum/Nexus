@@ -59,7 +59,7 @@ impl Display for Value {
 
 #[derive(Clone, Debug)]
 pub struct RepeatingCommand {
-    pub period: Duration,
+    pub period: Option<Duration>,
     pub variable: String,
     pub command: String,
 }

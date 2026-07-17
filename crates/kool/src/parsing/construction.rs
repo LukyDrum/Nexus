@@ -79,14 +79,14 @@ impl<'a> ElementInConstruction<'a> {
                 resolve_import(file, context)?
             }
             "Output" => {
-                let refresh: i64 = key_value!(refresh, values, UnresolvedValue::Value(Value::Number(number)) => number, 5);
+                let refresh: i64 = key_value!(refresh, values, UnresolvedValue::Value(Value::Number(number)) => number, 0);
                 let command =
                     content!(inner, ElementContent::Value(Value::String(command)) => command);
 
                 let internal_var = format!("__output_{}", context.claim_id());
                 context.variables.set(&internal_var, Value::Null);
                 context.commands.push(RepeatingCommand {
-                    period: Duration::from_secs(refresh as u64),
+                    period: (refresh > 0).then(|| Duration::from_secs(refresh as u64)),
                     variable: internal_var.clone(),
                     command,
                 });

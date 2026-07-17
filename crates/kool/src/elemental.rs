@@ -84,10 +84,15 @@ impl KoolWidget<ElementalMessage> for ElementalWidget {
     }
 
     fn subscription(&self) -> iced::Subscription<ElementalMessage> {
-        iced::Subscription::batch(self.commands.iter().enumerate().map(|(index, command)| {
-            iced::time::every(command.period)
-                .with(index)
-                .map(|(index, _instant)| ElementalMessage::RepeatingCommandTick(index))
-        }))
+        iced::Subscription::batch(self.commands.iter().enumerate().filter_map(
+            |(index, command)| {
+                let period = command.period?;
+                Some(
+                    iced::time::every(period)
+                        .with(index)
+                        .map(|(index, _instant)| ElementalMessage::RepeatingCommandTick(index)),
+                )
+            },
+        ))
     }
 }
