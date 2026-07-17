@@ -62,7 +62,7 @@ impl ParserContext {
     }
 }
 
-const VAR_DEF_KEYWORD: &str = "def";
+const VAR_DEF_KEYWORD: &str = "var";
 
 pub(super) fn parse<'a>(
     tokens: impl Iterator<Item = TokenWithMeta<'a>>,

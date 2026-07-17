@@ -8,7 +8,7 @@
 //! ```
 //! start        -> varDef start
 //!              -> element
-//! varDef       -> 'def' Ident value
+//! varDef       -> var Ident = value
 //! element      -> Ident ( body )
 //! body         -> keyPair, body
 //!              -> content
