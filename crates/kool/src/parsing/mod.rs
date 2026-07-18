@@ -12,7 +12,7 @@
 //! element      -> Ident ( body )
 //! body         -> keyPair, body
 //!              -> content
-//! keyPair      -> Ident = value
+//! keyPair      -> Ident: value
 //! value        -> String
 //! content      -> element
 //!              -> value

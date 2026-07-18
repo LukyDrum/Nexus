@@ -9,6 +9,7 @@ pub enum Token<'a> {
     RightParen,       // )
     LeftBracket,      // [
     RightBracket,     // ]
+    Colon,            // :
     Equal,            // =
     Comma,            // ,
 }

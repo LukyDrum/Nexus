@@ -51,6 +51,7 @@ pub(super) fn scan<'a>(input: &'a str) -> Result<Vec<TokenWithMeta<'a>>, Scanner
             ')' => Token::RightParen,
             '[' => Token::LeftBracket,
             ']' => Token::RightBracket,
+            ':' => Token::Colon,
             '=' => Token::Equal,
             ',' => Token::Comma,
             '$' => {

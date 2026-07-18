@@ -164,7 +164,7 @@ fn parse_body<'a>(
     // Parse stuff needing to know the next token
     match tokens.peek() {
         Some(TokenWithMeta {
-            token: Token::Equal,
+            token: Token::Colon,
             meta: _,
         }) => {
             parse_key_value(tokens, element, ident, context)?;
@@ -191,7 +191,7 @@ fn parse_key_value<'a>(
     key: &'a str,
     _context: &mut ParserContext,
 ) -> Result<(), ParserError<'a>> {
-    match_token!(tokens.next(), Token::Equal);
+    match_token!(tokens.next(), Token::Colon);
 
     let value = parse_value(tokens)?;
     element.values.insert(key, value);
