@@ -12,6 +12,7 @@ pub struct WidgetSettings {
     pub size: Size,
     pub margin: (i32, i32, i32, i32),
     pub rendering: Rendering,
+    pub click_through: bool,
 }
 
 impl Default for WidgetSettings {
@@ -24,6 +25,7 @@ impl Default for WidgetSettings {
             size: Size::Size(100, 100),
             margin: (0, 0, 0, 0),
             rendering: Rendering::default(),
+            click_through: false,
         }
     }
 }
@@ -41,6 +43,7 @@ impl From<WidgetSettings> for iced_layershell::Settings {
             exclusive_zone: value.exclusive_zone,
             size,
             margin: value.margin,
+            events_transparent: value.click_through,
             ..Default::default()
         };
 
