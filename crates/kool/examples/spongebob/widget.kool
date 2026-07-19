@@ -1,0 +1,10 @@
+Stack([
+    Image('sign.png'),
+    Container(
+        key: "msgBox",
+        Text(
+            key: "msg",
+            $input
+        )
+    )
+])

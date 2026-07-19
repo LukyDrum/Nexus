@@ -1,0 +1,23 @@
+name = "Spongebob says"
+size = [520, 450]
+anchor = "BottomLeft"
+click_through = true
+kool = "Import('widget.kool')"
+
+[visual.style]
+widget = {
+    align_x = "Center",
+    align_y = "Center",
+}
+
+"#msgBox" = {
+    align_x = "Center",
+    align_y = "Center",
+}
+"#msg" = {
+    color = "#000000",
+    font = "xkcd",
+    text_size = 15,
+    width = 160,
+    height = 300,
+}
