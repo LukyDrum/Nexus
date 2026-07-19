@@ -3,7 +3,7 @@ use std::{
     sync::{LazyLock, Mutex},
 };
 
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::style::Color;
 
@@ -206,13 +206,50 @@ pub struct Border {
     radius: [f32; 4],
 }
 
-#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
-#[serde(untagged)]
+#[derive(Clone, Copy, Debug, Default)]
 pub enum Length {
     Shrink,
     #[default]
     Fill,
     Fixed(f32),
+}
+
+impl<'de> Deserialize<'de> for Length {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum Helper {
+            Keyword(String),
+            Fixed(f32),
+        }
+
+        match Helper::deserialize(deserializer)? {
+            Helper::Keyword(s) => match s.as_str() {
+                "Fill" => Ok(Length::Fill),
+                "Shrink" => Ok(Length::Shrink),
+                _ => Err(serde::de::Error::custom(format!(
+                    "expected 'Fill', 'Shrink', or a number, found '{s}'"
+                ))),
+            },
+            Helper::Fixed(n) => Ok(Length::Fixed(n)),
+        }
+    }
+}
+
+impl Serialize for Length {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            Length::Shrink => serializer.serialize_str("Shrink"),
+            Length::Fill => serializer.serialize_str("Fill"),
+            Length::Fixed(n) => serializer.serialize_f32(*n),
+        }
+    }
 }
 
 impl From<Length> for iced::Length {
