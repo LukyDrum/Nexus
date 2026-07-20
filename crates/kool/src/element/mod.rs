@@ -1,10 +1,9 @@
 use std::rc::Rc;
 
-use crate::{element::environment::Variables, elemental::ElementalMessage, style::StyleTree};
+use crate::{elemental::ElementalMessage, language::Variables, style::StyleTree};
 
 mod column;
 mod container;
-pub(crate) mod environment;
 mod image;
 mod row;
 mod stack;

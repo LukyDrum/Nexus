@@ -1,12 +1,13 @@
 use crate::{
-    element::{BuildContext, KoolBuilder, environment::UnresolvedValue},
+    element::{BuildContext, KoolBuilder},
+    language::Expression,
     style::{StyleKey, WithStyle, WithStyleKey},
 };
 
 #[derive(Clone, Debug)]
 pub struct Text {
     pub key: String,
-    pub content: UnresolvedValue,
+    pub content: Expression,
 }
 
 impl KoolBuilder for Text {
@@ -16,7 +17,7 @@ impl KoolBuilder for Text {
         let key = StyleKey::new(self.key.clone());
         let style = context.style;
 
-        let content = self.content.resolve_or_null(context.variables);
+        let content = self.content.evaluate_or_null(context.variables);
         let widget = iced::widget::Text::new(content.to_string());
 
         if key.is_empty() {

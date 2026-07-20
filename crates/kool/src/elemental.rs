@@ -1,11 +1,11 @@
+use std::{process::Command, time::Duration};
+
 use serde::{Deserialize, Serialize};
 
 use crate::{
     KoolWidget,
-    element::{
-        BuildContext, KoolBuilder, KoolElement,
-        environment::{RepeatingCommand, Variables},
-    },
+    element::{BuildContext, KoolBuilder, KoolElement},
+    language::{Value, Variables},
     settings::WidgetSettings,
     style::WidgetStyle,
 };
@@ -94,5 +94,29 @@ impl KoolWidget<ElementalMessage> for ElementalWidget {
                 )
             },
         ))
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct RepeatingCommand {
+    pub period: Option<Duration>,
+    pub variable: String,
+    pub command: String,
+}
+
+impl RepeatingCommand {
+    pub fn run_or_null(&self) -> Value {
+        let output = Command::new("bash").arg("-c").arg(&self.command).output();
+
+        match output {
+            Ok(output) => {
+                if output.status.success() {
+                    String::from_utf8(output.stdout).map_or(Value::Null, Value::String)
+                } else {
+                    String::from_utf8(output.stderr).map_or(Value::Null, Value::String)
+                }
+            }
+            Err(_) => Value::Null,
+        }
     }
 }

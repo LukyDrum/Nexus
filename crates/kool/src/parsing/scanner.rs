@@ -1,6 +1,5 @@
 use std::num::ParseIntError;
 
-use crate::element::environment::Value;
 use crate::parsing::{
     Metadata,
     token::{Token, TokenWithMeta},
@@ -54,6 +53,11 @@ pub(super) fn scan<'a>(input: &'a str) -> Result<Vec<TokenWithMeta<'a>>, Scanner
             ':' => Token::Colon,
             '=' => Token::Equal,
             ',' => Token::Comma,
+            '+' => Token::Plus,
+            '-' => Token::Minus,
+            '/' => Token::Slash,
+            '*' => Token::Star,
+            '^' => Token::Caret,
             '$' => {
                 let start = index + 1;
                 let mut end = start;
@@ -93,7 +97,7 @@ pub(super) fn scan<'a>(input: &'a str) -> Result<Vec<TokenWithMeta<'a>>, Scanner
                     let _ = chars.next();
                 }
 
-                Token::Value(Value::String(string.to_owned()))
+                Token::String(string.to_owned())
             }
             c if c.is_ascii_digit() => {
                 let start = index;
@@ -109,7 +113,7 @@ pub(super) fn scan<'a>(input: &'a str) -> Result<Vec<TokenWithMeta<'a>>, Scanner
                     .parse()
                     .map_err(ScannerError::NumberParse)?;
 
-                Token::Value(Value::Number(num))
+                Token::Number(num)
             }
             c if c.is_whitespace() => continue,
             c if is_ident_char(c) => {

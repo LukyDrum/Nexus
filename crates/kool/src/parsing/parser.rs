@@ -1,10 +1,9 @@
+use crate::elemental::RepeatingCommand;
+use crate::language::{EvaluationError, Expression, Operator, Value, Variables};
 use std::{collections::HashMap, iter::Peekable};
 
 use crate::{
-    element::{
-        KoolElement,
-        environment::{RepeatingCommand, UnresolvedValue, Variables},
-    },
+    element::KoolElement,
     parsing::{
         construction::{ElementConstructionError, ElementContent, ElementInConstruction},
         token::{Token, TokenWithMeta},
@@ -14,9 +13,10 @@ use crate::{
 #[derive(Clone, Debug)]
 pub enum ParserError<'a> {
     Construction(ElementConstructionError<'a>),
+    ExpectedValue,
+    ExpressionEvaluation(EvaluationError),
     UnexpectedToken(TokenWithMeta<'a>),
     UnexpectedEof { expected: String },
-    ExpectedValue,
 }
 
 macro_rules! match_token {
@@ -90,9 +90,10 @@ fn parse_var_def<'a>(
 
     match_token!(tokens.next(), Token::Equal);
 
-    let UnresolvedValue::Value(value) = parse_value(tokens)? else {
-        return Err(ParserError::ExpectedValue);
-    };
+    let expression = parse_expression(tokens)?;
+    let value = expression
+        .evaluate(&context.variables)
+        .map_err(ParserError::ExpressionEvaluation)?;
 
     context.variables.set(name, value);
 
@@ -125,41 +126,30 @@ fn parse_body<'a>(
     element: &mut ElementInConstruction<'a>,
     context: &mut ParserContext,
 ) -> Result<(), ParserError<'a>> {
-    // Possibly parse things needing to only know the first token
-    let ident = match tokens.next() {
-        Some(TokenWithMeta {
-            token: Token::Ident(ident),
-            meta: _,
-        }) => ident,
-        Some(TokenWithMeta {
+    match tokens.peek().ok_or(ParserError::UnexpectedEof {
+        expected: "Element identifier, key identifier, list or an expression".to_owned(),
+    })? {
+        TokenWithMeta {
+            token: Token::Number(_) | Token::String(_) | Token::Variable(_),
+            ..
+        } => {
+            let expression = parse_expression(tokens)?;
+            element.inner = ElementContent::Expression(expression);
+            return Ok(());
+        }
+        TokenWithMeta {
             token: Token::LeftBracket,
-            meta: _,
-        }) => {
+            ..
+        } => {
             let elements = parse_elements_list(tokens, context)?;
             element.inner = ElementContent::Multiple(elements);
             return Ok(());
         }
-        Some(TokenWithMeta {
-            token: Token::Value(value),
-            meta: _,
-        }) => {
-            element.inner = ElementContent::Value(value);
-            return Ok(());
-        }
-        Some(TokenWithMeta {
-            token: Token::Variable(variable),
-            meta: _,
-        }) => {
-            element.inner = ElementContent::Variable(variable);
-            return Ok(());
-        }
-        Some(token) => return Err(ParserError::UnexpectedToken(token)),
-        None => {
-            return Err(ParserError::UnexpectedEof {
-                expected: "Element identifier, key identifier, value or a list".to_owned(),
-            });
-        }
-    };
+        _ => {}
+    }
+
+    let ident =
+        match_token!(tokens.next(), Token::Ident(ident) => ident, expected = "Element identifier");
 
     // Parse stuff needing to know the next token
     match tokens.peek() {
@@ -193,8 +183,8 @@ fn parse_key_value<'a>(
 ) -> Result<(), ParserError<'a>> {
     match_token!(tokens.next(), Token::Colon);
 
-    let value = parse_value(tokens)?;
-    element.values.insert(key, value);
+    let expression = parse_expression(tokens)?;
+    element.values.insert(key, expression);
 
     // Discard possible comma
     let _ = tokens.next_if(|TokenWithMeta { token, meta: _ }| matches!(token, Token::Comma));
@@ -202,29 +192,12 @@ fn parse_key_value<'a>(
     Ok(())
 }
 
-fn parse_value<'a>(
-    tokens: &mut Peekable<impl Iterator<Item = TokenWithMeta<'a>>>,
-) -> Result<UnresolvedValue, ParserError<'a>> {
-    match tokens.next() {
-        Some(TokenWithMeta {
-            token: Token::Value(value),
-            ..
-        }) => Ok(UnresolvedValue::Value(value)),
-        Some(TokenWithMeta {
-            token: Token::Variable(variable),
-            ..
-        }) => Ok(UnresolvedValue::Variable(variable.to_owned())),
-        Some(token) => Err(ParserError::UnexpectedToken(token)),
-        None => Err(ParserError::UnexpectedEof {
-            expected: "Some value".to_owned(),
-        }),
-    }
-}
-
 fn parse_elements_list<'a>(
     tokens: &mut Peekable<impl Iterator<Item = TokenWithMeta<'a>>>,
     context: &mut ParserContext,
 ) -> Result<Vec<KoolElement>, ParserError<'a>> {
+    match_token!(tokens.next(), Token::LeftBracket);
+
     let mut elements = Vec::new();
     loop {
         match tokens.next() {
@@ -248,4 +221,139 @@ fn parse_elements_list<'a>(
             }
         }
     }
+}
+
+fn parse_expression<'a>(
+    tokens: &mut Peekable<impl Iterator<Item = TokenWithMeta<'a>>>,
+) -> Result<Expression, ParserError<'a>> {
+    let mut left = term(tokens)?;
+
+    while tokens
+        .peek()
+        .is_some_and(|TokenWithMeta { token, .. }| matches!(token, Token::Plus | Token::Minus))
+    {
+        let Some(token) = tokens.next() else {
+            break;
+        };
+        let operator = token_to_operator(token)?;
+        let right = term(tokens)?;
+
+        left = Expression::Binary {
+            left: Box::new(left),
+            right: Box::new(right),
+            operator,
+        };
+    }
+
+    Ok(left)
+}
+
+fn term<'a>(
+    tokens: &mut Peekable<impl Iterator<Item = TokenWithMeta<'a>>>,
+) -> Result<Expression, ParserError<'a>> {
+    let mut left = unary(tokens)?;
+
+    while tokens
+        .peek()
+        .is_some_and(|TokenWithMeta { token, .. }| matches!(token, Token::Star | Token::Slash))
+    {
+        let Some(token) = tokens.next() else {
+            break;
+        };
+        let operator = token_to_operator(token)?;
+        let right = unary(tokens)?;
+
+        left = Expression::Binary {
+            left: Box::new(left),
+            right: Box::new(right),
+            operator,
+        };
+    }
+
+    Ok(left)
+}
+
+fn unary<'a>(
+    tokens: &mut Peekable<impl Iterator<Item = TokenWithMeta<'a>>>,
+) -> Result<Expression, ParserError<'a>> {
+    if tokens
+        .peek()
+        .is_some_and(|TokenWithMeta { token, .. }| matches!(token, Token::Plus | Token::Minus))
+    {
+        let Some(token) = tokens.next() else {
+            return Err(ParserError::UnexpectedEof {
+                expected: "an operator".to_owned(),
+            });
+        };
+        let operator = token_to_operator(token)?;
+        let operand = unary(tokens)?;
+
+        Ok(Expression::Unary {
+            operator,
+            operand: Box::new(operand),
+        })
+    } else {
+        power(tokens)
+    }
+}
+
+fn power<'a>(
+    tokens: &mut Peekable<impl Iterator<Item = TokenWithMeta<'a>>>,
+) -> Result<Expression, ParserError<'a>> {
+    let mut left = primary(tokens)?;
+
+    while tokens
+        .peek()
+        .is_some_and(|TokenWithMeta { token, .. }| matches!(token, Token::Caret))
+    {
+        let Some(token) = tokens.next() else {
+            break;
+        };
+        let operator = token_to_operator(token)?;
+        let right = primary(tokens)?;
+
+        left = Expression::Binary {
+            left: Box::new(left),
+            right: Box::new(right),
+            operator,
+        };
+    }
+
+    Ok(left)
+}
+
+fn primary<'a>(
+    tokens: &mut Peekable<impl Iterator<Item = TokenWithMeta<'a>>>,
+) -> Result<Expression, ParserError<'a>> {
+    let Some(TokenWithMeta { token, meta }) = tokens.next() else {
+        return Err(ParserError::UnexpectedEof {
+            expected: "a number, expression in parens, or variable".to_owned(),
+        });
+    };
+
+    let node = match token {
+        Token::Number(num) => Expression::Value(Value::Number(num)),
+        Token::String(string) => Expression::Value(Value::String(string)),
+        Token::LeftParen => {
+            let expression = parse_expression(tokens)?;
+            match_token!(tokens.next(), Token::RightParen);
+
+            expression
+        }
+        Token::Variable(name) => Expression::Variable(name),
+        _ => return Err(ParserError::UnexpectedToken(TokenWithMeta { token, meta })),
+    };
+
+    Ok(node)
+}
+
+fn token_to_operator(token: TokenWithMeta<'_>) -> Result<Operator, ParserError<'_>> {
+    Ok(match token.token {
+        Token::Plus => Operator::Add,
+        Token::Minus => Operator::Sub,
+        Token::Star => Operator::Mul,
+        Token::Slash => Operator::Div,
+        Token::Caret => Operator::Power,
+        _ => return Err(ParserError::UnexpectedToken(token)),
+    })
 }

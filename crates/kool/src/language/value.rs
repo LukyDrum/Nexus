@@ -1,0 +1,19 @@
+use std::fmt::Display;
+
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+pub enum Value {
+    #[default]
+    Null,
+    Number(i64),
+    String(String),
+}
+
+impl Display for Value {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Value::Null => write!(f, "null"),
+            Value::Number(number) => write!(f, "{number}"),
+            Value::String(string) => write!(f, "{string}"),
+        }
+    }
+}

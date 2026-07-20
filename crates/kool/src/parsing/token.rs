@@ -1,9 +1,10 @@
-use crate::{element::environment::Value, parsing::Metadata};
+use crate::parsing::Metadata;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Token<'a> {
     Ident(&'a str),   // eg. Text
-    Value(Value),     // eg. "Hello world"
+    String(String),   // eg. "Hello world"
+    Number(i64),      // eg. 42
     Variable(String), // eg. $count
     LeftParen,        // (
     RightParen,       // )
@@ -12,6 +13,11 @@ pub enum Token<'a> {
     Colon,            // :
     Equal,            // =
     Comma,            // ,
+    Plus,             // +
+    Minus,            // -
+    Slash,            // /
+    Star,             // *
+    Caret,            // ^
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
