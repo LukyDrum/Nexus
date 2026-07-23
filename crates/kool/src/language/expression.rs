@@ -129,6 +129,10 @@ impl Expression {
                                 index,
                             })?
                     }
+                    (Value::Array(mut left), Operator::Add, Value::Array(right)) => {
+                        left.extend(right);
+                        Value::Array(left)
+                    }
 
                     // Other
                     (left, operator, right) => {
@@ -140,15 +144,12 @@ impl Expression {
                     }
                 }
             }
-            Expression::Array(array) => {
-                let mut values = Vec::new();
-
-                for expression in array {
-                    values.push(expression.evaluate_or_null(variables));
-                }
-
-                Value::Array(values)
-            }
+            Expression::Array(array) => Value::Array(
+                array
+                    .iter()
+                    .map(|expression| expression.evaluate_or_null(variables))
+                    .collect(),
+            ),
         })
     }
 
