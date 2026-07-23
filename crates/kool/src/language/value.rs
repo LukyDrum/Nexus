@@ -6,6 +6,7 @@ pub enum Value {
     Null,
     Number(i64),
     String(String),
+    Array(Vec<Value>),
 }
 
 impl Display for Value {
@@ -14,6 +15,15 @@ impl Display for Value {
             Value::Null => write!(f, "null"),
             Value::Number(number) => write!(f, "{number}"),
             Value::String(string) => write!(f, "{string}"),
+            Value::Array(array) => {
+                write!(f, "[")?;
+
+                for value in array {
+                    write!(f, "{value}, ")?;
+                }
+
+                write!(f, "]")
+            }
         }
     }
 }

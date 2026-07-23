@@ -15,8 +15,10 @@ pub enum ParserError<'a> {
     Construction(ElementConstructionError<'a>),
     ExpectedValue,
     ExpressionEvaluation(EvaluationError),
+    UndeclaredVariable(&'a str),
     UnexpectedToken(TokenWithMeta<'a>),
     UnexpectedEof { expected: String },
+    VariableRedeclaration(&'a str),
 }
 
 macro_rules! match_token {
@@ -62,7 +64,7 @@ impl ParserContext {
     }
 }
 
-const VAR_DEF_KEYWORD: &str = "var";
+const VAR_DECL_KEYWORD: &str = "var";
 
 pub(super) fn parse<'a>(
     tokens: impl Iterator<Item = TokenWithMeta<'a>>,
@@ -74,7 +76,7 @@ pub(super) fn parse<'a>(
         let ident = match_token!(tokens.next(), Token::Ident(ident) => ident, expected = "Element identifier");
 
         match ident {
-            VAR_DEF_KEYWORD => parse_var_def(&mut tokens, context)?,
+            VAR_DECL_KEYWORD => parse_var_assignment(&mut tokens, context, true)?,
             ident => {
                 return parse_element(&mut tokens, ident, context);
             }
@@ -82,9 +84,10 @@ pub(super) fn parse<'a>(
     }
 }
 
-fn parse_var_def<'a>(
+fn parse_var_assignment<'a>(
     tokens: &mut Peekable<impl Iterator<Item = TokenWithMeta<'a>>>,
     context: &mut ParserContext,
+    is_declaration: bool,
 ) -> Result<(), ParserError<'a>> {
     let name = match_token!(tokens.next(), Token::Ident(name) => name, expected = "Variable name");
 
@@ -95,9 +98,12 @@ fn parse_var_def<'a>(
         .evaluate(&context.variables)
         .map_err(ParserError::ExpressionEvaluation)?;
 
-    context.variables.set(name, value);
-
-    Ok(())
+    let old_value = context.variables.set(name, value);
+    match (old_value, is_declaration) {
+        (Some(_), true) => Err(ParserError::VariableRedeclaration(name)),
+        (None, false) => Err(ParserError::UndeclaredVariable(name)),
+        _ => Ok(()),
+    }
 }
 
 fn parse_element<'a>(
@@ -126,9 +132,11 @@ fn parse_body<'a>(
     element: &mut ElementInConstruction<'a>,
     context: &mut ParserContext,
 ) -> Result<(), ParserError<'a>> {
-    match tokens.peek().ok_or(ParserError::UnexpectedEof {
+    let peek = tokens.peek().ok_or(ParserError::UnexpectedEof {
         expected: "Element identifier, key identifier, list or an expression".to_owned(),
-    })? {
+    })?;
+
+    match peek {
         TokenWithMeta {
             token: Token::Number(_) | Token::String(_) | Token::Variable(_),
             ..
@@ -158,6 +166,9 @@ fn parse_body<'a>(
             meta: _,
         }) => {
             parse_key_value(tokens, element, ident, context)?;
+
+            match_token!(tokens.next(), Token::Comma);
+
             parse_body(tokens, element, context)
         }
         Some(TokenWithMeta {
@@ -185,9 +196,6 @@ fn parse_key_value<'a>(
 
     let expression = parse_expression(tokens)?;
     element.values.insert(key, expression);
-
-    // Discard possible comma
-    let _ = tokens.next_if(|TokenWithMeta { token, meta: _ }| matches!(token, Token::Comma));
 
     Ok(())
 }
@@ -325,26 +333,91 @@ fn power<'a>(
 fn primary<'a>(
     tokens: &mut Peekable<impl Iterator<Item = TokenWithMeta<'a>>>,
 ) -> Result<Expression, ParserError<'a>> {
-    let Some(TokenWithMeta { token, meta }) = tokens.next() else {
-        return Err(ParserError::UnexpectedEof {
-            expected: "a number, expression in parens, or variable".to_owned(),
-        });
-    };
+    let mut expression = if let Some(TokenWithMeta {
+        token: Token::LeftBracket,
+        ..
+    }) = tokens.peek()
+    {
+        parse_array(tokens)?
+    } else {
+        let Some(TokenWithMeta { token, meta }) = tokens.next() else {
+            return Err(ParserError::UnexpectedEof {
+                expected: "a number, a string, an array, an expression in parens, or variable"
+                    .to_owned(),
+            });
+        };
 
-    let node = match token {
-        Token::Number(num) => Expression::Value(Value::Number(num)),
-        Token::String(string) => Expression::Value(Value::String(string)),
-        Token::LeftParen => {
-            let expression = parse_expression(tokens)?;
-            match_token!(tokens.next(), Token::RightParen);
+        match token {
+            Token::Number(num) => Expression::Value(Value::Number(num)),
+            Token::String(string) => Expression::Value(Value::String(string)),
+            Token::Variable(name) => Expression::Variable(name),
+            Token::LeftParen => {
+                let expression = parse_expression(tokens)?;
+                match_token!(tokens.next(), Token::RightParen);
 
-            expression
+                expression
+            }
+            _ => return Err(ParserError::UnexpectedToken(TokenWithMeta { token, meta })),
         }
-        Token::Variable(name) => Expression::Variable(name),
-        _ => return Err(ParserError::UnexpectedToken(TokenWithMeta { token, meta })),
     };
 
-    Ok(node)
+    while let Some(TokenWithMeta {
+        token: Token::LeftBracket,
+        ..
+    }) = tokens.peek()
+    {
+        let index = parse_indexing(tokens)?;
+        expression = Expression::Binary {
+            operator: Operator::Index,
+            left: Box::new(expression),
+            right: Box::new(index),
+        };
+    }
+
+    Ok(expression)
+}
+
+fn parse_array<'a>(
+    tokens: &mut Peekable<impl Iterator<Item = TokenWithMeta<'a>>>,
+) -> Result<Expression, ParserError<'a>> {
+    match_token!(tokens.next(), Token::LeftBracket);
+
+    let mut array = Vec::new();
+    while let Some(TokenWithMeta { token, .. }) = tokens.peek() {
+        match token {
+            // We need this branch because of empty arrays []
+            Token::RightBracket => {
+                tokens.next();
+                return Ok(Expression::Array(array));
+            }
+            _ => {
+                let expression = parse_expression(tokens)?;
+                array.push(expression);
+            }
+        }
+
+        let token = match_token!(tokens.peek(), t @ (Token::Comma | Token::RightBracket) => t, expected = "a comma or an end of array");
+        // Discard comma
+        if let Token::Comma = token {
+            tokens.next();
+        }
+    }
+
+    Err(ParserError::UnexpectedEof {
+        expected: "an arrays next item or an end of the array".to_owned(),
+    })
+}
+
+fn parse_indexing<'a>(
+    tokens: &mut Peekable<impl Iterator<Item = TokenWithMeta<'a>>>,
+) -> Result<Expression, ParserError<'a>> {
+    match_token!(tokens.next(), Token::LeftBracket);
+
+    let expression = parse_expression(tokens)?;
+
+    match_token!(tokens.next(), Token::RightBracket);
+
+    Ok(expression)
 }
 
 fn token_to_operator(token: TokenWithMeta<'_>) -> Result<Operator, ParserError<'_>> {

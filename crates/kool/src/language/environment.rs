@@ -10,11 +10,13 @@ impl Variables {
         self.0.get(name)
     }
 
-    pub fn set(&mut self, name: &str, value: Value) {
+    /// Returns the previous value of the variable.
+    pub fn set(&mut self, name: &str, value: Value) -> Option<Value> {
         if let Some(old) = self.0.get_mut(name) {
-            *old = value;
+            let old = std::mem::replace(old, value);
+            Some(old)
         } else {
-            self.0.insert(name.to_owned(), value);
+            self.0.insert(name.to_owned(), value)
         }
     }
 
