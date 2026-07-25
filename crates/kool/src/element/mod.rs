@@ -25,11 +25,15 @@ pub struct BuildContext<'a> {
     pub style: Rc<StyleTree>,
 }
 
-/// Defines the transformation from a custom element (or any type really) to a `iced` widget/element.
-pub trait KoolBuilder {
+/// Defines the basic behaviour of a custom element.
+pub trait Element {
     type IcedElement;
 
     fn build(&self, context: BuildContext) -> Self::IcedElement;
+
+    fn type_name(&self) -> &'static str {
+        std::any::type_name::<Self>()
+    }
 }
 
 /// The base building block of Kool.
@@ -47,7 +51,7 @@ pub enum KoolElement {
     Stack(kool::Stack),
 }
 
-impl KoolBuilder for KoolElement {
+impl Element for KoolElement {
     type IcedElement = iced::Element<'static, ElementalMessage>;
 
     fn build(&self, context: BuildContext) -> Self::IcedElement {
@@ -61,3 +65,10 @@ impl KoolBuilder for KoolElement {
         }
     }
 }
+
+impl PartialEq for KoolElement {
+    fn eq(&self, other: &Self) -> bool {
+        std::ptr::eq(self, other)
+    }
+}
+impl Eq for KoolElement {}

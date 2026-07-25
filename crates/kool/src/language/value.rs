@@ -1,12 +1,15 @@
 use std::fmt::Display;
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+use crate::{Element, KoolElement};
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub enum Value {
     #[default]
     Null,
     Number(i64),
     String(String),
     Array(Vec<Value>),
+    Element(Box<KoolElement>),
 }
 
 impl Display for Value {
@@ -24,6 +27,7 @@ impl Display for Value {
 
                 write!(f, "]")
             }
+            Value::Element(element) => write!(f, "{}", element.type_name()),
         }
     }
 }

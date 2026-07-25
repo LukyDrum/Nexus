@@ -1,5 +1,5 @@
 use crate::{
-    element::{BuildContext, KoolBuilder},
+    element::{BuildContext, Element},
     language::Expression,
     style::{StyleKey, WithStyle, WithStyleKey},
 };
@@ -10,7 +10,7 @@ pub struct Text {
     pub content: Expression,
 }
 
-impl KoolBuilder for Text {
+impl Element for Text {
     type IcedElement = iced::widget::Text<'static>;
 
     fn build(&self, context: BuildContext) -> Self::IcedElement {

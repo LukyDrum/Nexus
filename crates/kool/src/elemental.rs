@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     KoolWidget,
-    element::{BuildContext, KoolBuilder, KoolElement},
+    element::{BuildContext, Element, KoolElement},
     language::{Value, Variables},
     settings::WidgetSettings,
     style::WidgetStyle,

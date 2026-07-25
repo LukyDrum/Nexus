@@ -1,5 +1,5 @@
 use crate::{
-    element::{BuildContext, KoolBuilder, KoolElement},
+    element::{BuildContext, Element, KoolElement},
     elemental::ElementalMessage,
     style::{StyleKey, WithStyle, WithStyleKey},
 };
@@ -10,7 +10,7 @@ pub struct Column {
     pub content: Vec<KoolElement>,
 }
 
-impl KoolBuilder for Column {
+impl Element for Column {
     type IcedElement = iced::widget::Column<'static, ElementalMessage>;
 
     fn build(&self, context: BuildContext) -> Self::IcedElement {

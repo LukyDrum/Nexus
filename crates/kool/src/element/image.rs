@@ -1,5 +1,5 @@
 use crate::{
-    element::{BuildContext, KoolBuilder},
+    element::{BuildContext, Element},
     style::{StyleKey, WithStyle, WithStyleKey},
 };
 
@@ -9,7 +9,7 @@ pub struct Image {
     pub file: String,
 }
 
-impl KoolBuilder for Image {
+impl Element for Image {
     type IcedElement = iced::widget::Image;
 
     fn build(&self, context: BuildContext) -> Self::IcedElement {
