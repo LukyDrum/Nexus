@@ -65,6 +65,7 @@ impl ParserContext {
 }
 
 const VAR_DECL_KEYWORD: &str = "var";
+const NULL_KEYWORD: &str = "null";
 
 pub(super) fn parse<'a>(
     tokens: impl Iterator<Item = TokenWithMeta<'a>>,
@@ -348,6 +349,7 @@ fn primary<'a>(
         };
 
         match token {
+            Token::Ident(NULL_KEYWORD) => Expression::Value(Value::Null),
             Token::Number(num) => Expression::Value(Value::Number(num)),
             Token::String(string) => Expression::Value(Value::String(string)),
             Token::Variable(name) => Expression::Variable(name),
