@@ -15,10 +15,10 @@ pub enum ParserError<'a> {
     Construction(ElementConstructionError<'a>),
     ExpectedValue,
     ExpressionEvaluation(EvaluationError),
-    UndeclaredVariable(&'a str),
+    UndeclaredVariable(String),
     UnexpectedToken(TokenWithMeta<'a>),
     UnexpectedEof { expected: String },
-    VariableRedeclaration(&'a str),
+    VariableRedeclaration(String),
 }
 
 macro_rules! match_token {
@@ -73,7 +73,17 @@ pub(super) fn parse<'a>(
 ) -> Result<KoolElement, ParserError<'a>> {
     let mut tokens = tokens.peekable();
 
+    // We expect var declarations, var assignments and the root element at the top level.
     loop {
+        if let Some(TokenWithMeta {
+            token: Token::Variable(_),
+            ..
+        }) = tokens.peek()
+        {
+            parse_var_assignment(&mut tokens, context, false)?;
+            continue;
+        }
+
         let ident = match_token!(tokens.next(), Token::Ident(ident) => ident, expected = "Element identifier");
 
         match ident {
@@ -90,7 +100,12 @@ fn parse_var_assignment<'a>(
     context: &mut ParserContext,
     is_declaration: bool,
 ) -> Result<(), ParserError<'a>> {
-    let name = match_token!(tokens.next(), Token::Ident(name) => name, expected = "Variable name");
+    let name = if is_declaration {
+        match_token!(tokens.next(), Token::Ident(name) => name, expected = "Variable declaration")
+            .to_owned()
+    } else {
+        match_token!(tokens.next(), Token::Variable(name) => name, expected = "Variable name")
+    };
 
     match_token!(tokens.next(), Token::Equal);
 
@@ -99,7 +114,7 @@ fn parse_var_assignment<'a>(
         .evaluate(&context.variables)
         .map_err(ParserError::ExpressionEvaluation)?;
 
-    let old_value = context.variables.set(name, value);
+    let old_value = context.variables.set(&name, value);
     match (old_value, is_declaration) {
         (Some(_), true) => Err(ParserError::VariableRedeclaration(name)),
         (None, false) => Err(ParserError::UndeclaredVariable(name)),
