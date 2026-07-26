@@ -1,32 +1,34 @@
 use crate::{
-    element::{BuildContext, Element, KoolElement},
+    element::{BuildContext, Element, error::ErrorElement, util::into_child_elements},
     elemental::ElementalMessage,
+    eval_or_return_error,
+    language::{Expression, Value},
     style::{StyleKey, WithStyle, WithStyleKey},
 };
 
 #[derive(Clone, Debug)]
 pub struct Column {
     pub key: String,
-    pub content: Vec<KoolElement>,
+    pub content: Expression,
 }
 
-impl Element for Column {
-    type IcedElement = iced::widget::Column<'static, ElementalMessage>;
+impl<'a> Element<'a> for Column {
+    type IcedElement = iced::widget::Column<'a, ElementalMessage>;
 
-    fn build(&self, context: BuildContext) -> Self::IcedElement {
+    fn build(&self, context: &'a BuildContext) -> Result<Self::IcedElement, ErrorElement> {
         let key = StyleKey::new(self.key.clone());
         let style = context.style.clone();
 
-        let widget = iced::widget::Column::new().extend(
-            self.content
-                .iter()
-                .map(|child| child.build(context.clone())),
-        );
+        let content =
+            eval_or_return_error!(&self.content, &context.variables, Value::Array(array) => array);
+        let children = into_child_elements(content, context);
 
-        if key.is_empty() {
+        let widget = iced::widget::Column::new().extend(children);
+
+        Ok(if key.is_empty() {
             widget.with_style(style)
         } else {
             widget.with_style_key(key).with_style(style).element()
-        }
+        })
     }
 }

@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::{Element, KoolElement};
+use crate::KoolElement;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub enum Value {
@@ -27,7 +27,7 @@ impl Display for Value {
 
                 write!(f, "]")
             }
-            Value::Element(element) => write!(f, "{}", element.type_name()),
+            Value::Element(_element) => write!(f, "<element>"),
         }
     }
 }

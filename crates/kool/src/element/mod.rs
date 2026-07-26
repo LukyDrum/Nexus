@@ -4,10 +4,14 @@ use crate::{elemental::ElementalMessage, language::Variables, style::StyleTree};
 
 mod column;
 mod container;
+mod error;
 mod image;
 mod row;
 mod stack;
 mod text;
+pub(crate) mod util;
+
+pub use error::ErrorElement;
 
 pub mod kool {
     pub use super::column::Column;
@@ -20,18 +24,18 @@ pub mod kool {
 
 /// The context in which an element is buidl through `KoolBuilder`.
 #[derive(Clone, Debug)]
-pub struct BuildContext<'a> {
-    pub variables: &'a Variables,
+pub struct BuildContext {
+    pub variables: Variables,
     pub style: Rc<StyleTree>,
 }
 
 /// Defines the basic behaviour of a custom element.
-pub trait Element {
+pub trait Element<'a> {
     type IcedElement;
 
-    fn build(&self, context: BuildContext) -> Self::IcedElement;
+    fn build(&self, context: &'a BuildContext) -> Result<Self::IcedElement, ErrorElement>;
 
-    fn type_name(&self) -> &'static str {
+    fn type_name() -> &'static str {
         std::any::type_name::<Self>()
     }
 }
@@ -51,17 +55,24 @@ pub enum KoolElement {
     Stack(kool::Stack),
 }
 
-impl Element for KoolElement {
-    type IcedElement = iced::Element<'static, ElementalMessage>;
+macro_rules! build {
+    ($elem:ident, $context:expr) => {
+        match $elem.build($context) {
+            Ok(elem) => elem.into(),
+            Err(error) => error.build($context).into(),
+        }
+    };
+}
 
-    fn build(&self, context: BuildContext) -> Self::IcedElement {
+impl KoolElement {
+    pub fn build<'a>(&self, context: &'a BuildContext) -> iced::Element<'a, ElementalMessage> {
         match self {
-            KoolElement::Text(text) => text.build(context).into(),
-            KoolElement::Container(container) => container.build(context).into(),
-            KoolElement::Image(image) => image.build(context).into(),
-            KoolElement::Column(column) => column.build(context).into(),
-            KoolElement::Row(row) => row.build(context).into(),
-            KoolElement::Stack(stack) => stack.build(context).into(),
+            KoolElement::Text(text) => build!(text, context),
+            KoolElement::Container(container) => build!(container, context),
+            KoolElement::Image(image) => build!(image, context),
+            KoolElement::Column(column) => build!(column, context),
+            KoolElement::Row(row) => build!(row, context),
+            KoolElement::Stack(stack) => build!(stack, context),
         }
     }
 }

@@ -158,3 +158,9 @@ impl Expression {
         self.evaluate(variables).unwrap_or_default()
     }
 }
+
+impl From<Value> for Expression {
+    fn from(value: Value) -> Self {
+        Self::Value(value)
+    }
+}

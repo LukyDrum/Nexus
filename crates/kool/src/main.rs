@@ -24,14 +24,7 @@ fn main() {
     let root =
         scan_and_parse_with_context(&config.kool, &mut context).expect("Failed to parse kool.");
 
-    let widget = ElementalWidget {
-        name: config.name,
-        settings: config.settings,
-        style: config.visual,
-        root,
-        variables: context.variables,
-        commands: context.commands,
-    };
+    let widget = ElementalWidget::new(config.name, config.settings, config.visual, root, context);
 
     KoolWidgetRunner::run(widget).expect("Failed to run widget.");
 }

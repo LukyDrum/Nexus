@@ -3,9 +3,9 @@ use std::{process::Command, time::Duration};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    KoolWidget,
-    element::{BuildContext, Element, KoolElement},
-    language::{Value, Variables},
+    KoolWidget, ParserContext,
+    element::{BuildContext, KoolElement},
+    language::Value,
     settings::WidgetSettings,
     style::WidgetStyle,
 };
@@ -34,7 +34,7 @@ pub struct ElementalWidget {
     pub settings: WidgetSettings,
     pub style: WidgetStyle,
     pub root: KoolElement,
-    pub variables: Variables,
+    pub build_context: BuildContext,
     pub commands: Vec<RepeatingCommand>,
 }
 
@@ -42,6 +42,35 @@ pub struct ElementalWidget {
 pub enum ElementalMessage {
     Empty,
     RepeatingCommandTick(usize),
+}
+
+impl ElementalWidget {
+    pub fn new(
+        name: String,
+        settings: WidgetSettings,
+        style: WidgetStyle,
+        root: KoolElement,
+        context: ParserContext,
+    ) -> Self {
+        let style_tree = style.style_tree();
+        let ParserContext {
+            variables,
+            commands,
+            ..
+        } = context;
+
+        Self {
+            name,
+            settings,
+            style,
+            root,
+            build_context: BuildContext {
+                variables,
+                style: style_tree,
+            },
+            commands,
+        }
+    }
 }
 
 impl KoolWidget<ElementalMessage> for ElementalWidget {
@@ -59,18 +88,17 @@ impl KoolWidget<ElementalMessage> for ElementalWidget {
             ElementalMessage::RepeatingCommandTick(index) => {
                 let command = &self.commands[index];
                 let output_value = command.run_or_null();
-                self.variables.set(&command.variable, output_value);
+                self.build_context
+                    .variables
+                    .set(&command.variable, output_value);
 
                 iced::Task::none()
             }
         }
     }
 
-    fn view(&'_ self) -> impl Into<iced::Element<'_, ElementalMessage>> {
-        self.root.build(BuildContext {
-            style: self.style.style_tree(),
-            variables: &self.variables,
-        })
+    fn view<'a>(&'a self) -> impl Into<iced::Element<'a, ElementalMessage>> {
+        self.root.build(&self.build_context)
     }
 
     fn style(&self) -> &crate::style::WidgetStyle {
