@@ -1,41 +1,25 @@
-use std::{process::Command, time::Duration};
-
-use serde::{Deserialize, Serialize};
+use std::{process::Command, rc::Rc, time::Duration};
 
 use crate::{
-    KoolWidget, ParserContext,
-    element::{BuildContext, KoolElement},
-    language::Value,
+    Element, KoolWidget,
+    element::{BuildContext, KoolElement, kool},
+    language::{Environment, Function, Value},
     settings::WidgetSettings,
     style::WidgetStyle,
 };
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct ElementalConfig {
-    /// Name of the widget.
-    #[serde(default = "default_name")]
-    pub name: String,
-    pub kool: String,
-    /// Settings for this widget.
-    #[serde(default, flatten)]
-    pub settings: WidgetSettings,
-    /// The style of this widget.
-    #[serde(default)]
-    pub visual: WidgetStyle,
-}
-
-fn default_name() -> String {
-    "Kool widget".to_owned()
-}
+const VIEW_FUNCTION_NAME: &str = "view";
 
 #[derive(Clone, Debug)]
 pub struct ElementalWidget {
-    pub name: String,
-    pub settings: WidgetSettings,
-    pub style: WidgetStyle,
-    pub root: KoolElement,
-    pub build_context: BuildContext,
-    pub commands: Vec<RepeatingCommand>,
+    name: String,
+    settings: WidgetSettings,
+    style: WidgetStyle,
+
+    root: KoolElement,
+    runtime: Environment,
+    view_function: Rc<Function>,
+    commands: Vec<RepeatingCommand>,
 }
 
 #[derive(Clone, Debug)]
@@ -49,26 +33,34 @@ impl ElementalWidget {
         name: String,
         settings: WidgetSettings,
         style: WidgetStyle,
-        root: KoolElement,
-        context: ParserContext,
+        mut runtime: Environment,
     ) -> Self {
-        let style_tree = style.style_tree();
-        let ParserContext {
-            variables,
-            commands,
-            ..
-        } = context;
+        let view_function = runtime
+            .get_function(VIEW_FUNCTION_NAME)
+            .expect("No view function found");
+        let root = Self::get_root(&view_function, &mut runtime);
 
         Self {
             name,
             settings,
             style,
+
             root,
-            build_context: BuildContext {
-                variables,
-                style: style_tree,
-            },
-            commands,
+            runtime,
+            view_function,
+            commands: Vec::new(),
+        }
+    }
+
+    fn get_root(view_function: &Function, environment: &mut Environment) -> KoolElement {
+        match view_function.call_with_default_args(environment) {
+            Ok(Value::Element(element)) => *element,
+            Ok(value) => KoolElement::Error(kool::Error::new(format!(
+                "view function returned non-element value: {value}"
+            ))),
+            Err(error) => KoolElement::Error(kool::Error::new(format!(
+                "view function call ended with error: {error:?}"
+            ))),
         }
     }
 }
@@ -83,14 +75,16 @@ impl KoolWidget<ElementalMessage> for ElementalWidget {
     }
 
     fn update(&mut self, message: ElementalMessage) -> iced::Task<ElementalMessage> {
+        self.root = Self::get_root(&self.view_function, &mut self.runtime);
+
         match message {
             ElementalMessage::Empty => iced::Task::none(),
             ElementalMessage::RepeatingCommandTick(index) => {
                 let command = &self.commands[index];
                 let output_value = command.run_or_null();
-                self.build_context
-                    .variables
-                    .set(&command.variable, output_value);
+                // self.build_context
+                //     .variables
+                //     .set(&command.variable, output_value);
 
                 iced::Task::none()
             }
@@ -98,7 +92,11 @@ impl KoolWidget<ElementalMessage> for ElementalWidget {
     }
 
     fn view<'a>(&'a self) -> impl Into<iced::Element<'a, ElementalMessage>> {
-        self.root.build(&self.build_context)
+        let context = BuildContext {
+            style: self.style.style_tree(),
+        };
+
+        self.root.build(&context)
     }
 
     fn style(&self) -> &crate::style::WidgetStyle {

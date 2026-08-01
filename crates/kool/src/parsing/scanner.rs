@@ -21,7 +21,7 @@ pub struct CharWithMeta {
     meta: Metadata,
 }
 
-pub(super) fn scan<'a>(input: &'a str) -> Result<Vec<TokenWithMeta<'a>>, ScannerError> {
+pub(super) fn scan(input: &str) -> Result<Vec<TokenWithMeta>, ScannerError> {
     let lines = input.split_inclusive('\n');
     let mut chars = lines
         .into_iter()
@@ -50,6 +50,8 @@ pub(super) fn scan<'a>(input: &'a str) -> Result<Vec<TokenWithMeta<'a>>, Scanner
             ')' => Token::RightParen,
             '[' => Token::LeftBracket,
             ']' => Token::RightBracket,
+            '{' => Token::LeftBrace,
+            '}' => Token::RightBrace,
             ':' => Token::Colon,
             '=' => Token::Equal,
             ',' => Token::Comma,
@@ -58,22 +60,6 @@ pub(super) fn scan<'a>(input: &'a str) -> Result<Vec<TokenWithMeta<'a>>, Scanner
             '/' => Token::Slash,
             '*' => Token::Star,
             '^' => Token::Caret,
-            '$' => {
-                let start = index + 1;
-                let mut end = start;
-                while chars
-                    .next_if(|(_, CharWithMeta { char, .. })| is_ident_char(*char))
-                    .is_some()
-                {
-                    end += 1;
-                }
-
-                if start == end {
-                    return Err(ScannerError::EmptyVarName(meta));
-                }
-
-                Token::Variable(input[start..end].to_owned())
-            }
             quote @ ('"' | '\'') => {
                 let (string, skip) = if &input[index..index + 3] == MULTILINE_STRING_SIGN {
                     let Some(string) = scan_multiline_string(input, index) else {
@@ -126,7 +112,7 @@ pub(super) fn scan<'a>(input: &'a str) -> Result<Vec<TokenWithMeta<'a>>, Scanner
                     end += 1;
                 }
 
-                Token::Ident(&input[start..=end])
+                Token::Ident(input[start..=end].to_owned())
             }
             _ => return Err(ScannerError::UnexpectedChar(CharWithMeta { char, meta })),
         };

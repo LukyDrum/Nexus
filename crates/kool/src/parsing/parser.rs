@@ -1,22 +1,24 @@
-use crate::elemental::RepeatingCommand;
-use crate::language::{EvaluationError, Expression, Operator, Value, Variables};
-use std::{collections::HashMap, iter::Peekable};
+// Because of macros
+#![allow(unreachable_patterns)]
 
-use crate::{
-    element::KoolElement,
-    parsing::{
-        construction::{ElementConstructionError, ElementInConstruction},
-        token::{Token, TokenWithMeta},
-    },
+use crate::language::{
+    EvaluationError, Expression, Function, FunctionParam, Operator, Statement, StatementBlock,
+    Value,
 };
+use crate::parsing::multi_peek::MultiPeekable;
+use std::collections::HashMap;
+
+use crate::parsing::token::{Token, TokenWithMeta};
+
+pub type Tokens<Iter> = MultiPeekable<Iter, TokenWithMeta>;
 
 #[derive(Clone, Debug)]
-pub enum ParserError<'a> {
-    Construction(ElementConstructionError<'a>),
+pub enum ParserError {
+    DuplicateArgument(String),
     ExpectedValue,
     ExpressionEvaluation(EvaluationError),
     UndeclaredVariable(String),
-    UnexpectedToken(TokenWithMeta<'a>),
+    UnexpectedToken(TokenWithMeta),
     UnexpectedEof { expected: String },
     VariableRedeclaration(String),
 }
@@ -49,169 +51,255 @@ macro_rules! match_token {
     };
 }
 
-#[derive(Debug, Default)]
-pub struct ParserContext {
-    next_id: u32,
-    pub variables: Variables,
-    pub commands: Vec<RepeatingCommand>,
+macro_rules! if_token {
+    ($token:expr, $expected:expr, $code:block) => {
+        if_token!($token, $expected, $code else {})
+    };
+    ($token:expr, $expected:expr, $true:block else $false:block) => {
+        match $token {
+            Some(TokenWithMeta { token, meta: _ }) if token == $expected => $true,
+            Some(_other) => $false,
+            None => {
+                return Err(ParserError::UnexpectedEof {
+                    expected: format!("{:?}", $expected),
+                })
+            }
+        }
+    };
 }
 
-impl ParserContext {
-    pub fn claim_id(&mut self) -> u32 {
-        let id = self.next_id;
-        self.next_id += 1;
-        id
+const NULL_KEYWORD: &str = "null";
+const VAR_KEY_WORD: &str = "var";
+const DEF_KEYWORD: &str = "def";
+
+pub fn parse(tokens: impl Iterator<Item = TokenWithMeta>) -> Result<StatementBlock, ParserError> {
+    let mut tokens = MultiPeekable::new(tokens);
+
+    let mut root_block = Vec::new();
+
+    while tokens.peek().is_some() {
+        let statement = statement(&mut tokens)?;
+        root_block.push(statement);
+    }
+
+    Ok(StatementBlock {
+        statements: root_block,
+    })
+}
+
+fn statement(
+    tokens: &mut Tokens<impl Iterator<Item = TokenWithMeta>>,
+) -> Result<Statement, ParserError> {
+    let peek = match_token!(tokens.peek(), anything => anything, expected = "a statement");
+
+    match peek {
+        Token::Ident(ident) if ident == VAR_KEY_WORD => var_declaration(tokens),
+        Token::Ident(ident) if ident == DEF_KEYWORD => function_definition(tokens),
+        Token::Ident(_) => {
+            let peek = tokens.multi_peek(2);
+            match peek.get(1) {
+                Some(TokenWithMeta {
+                    token: Token::Equal,
+                    ..
+                }) => {
+                    let name = match_token!(tokens.next(), Token::Ident(name) => name, expected = "a variable name");
+                    var_assignment(tokens, name)
+                }
+                Some(TokenWithMeta {
+                    token: Token::LeftParen,
+                    ..
+                }) => {
+                    let name = match_token!(tokens.next(), Token::Ident(name) => name, expected = "a function name");
+                    function_call(tokens, name)
+                        .map(|expression| Statement::Expression { expression })
+                }
+                _ => expression(tokens).map(|expression| Statement::Expression { expression }),
+            }
+        }
+        Token::LeftBrace => block(tokens).map(|block| Statement::Block { block }),
+        _ => expression(tokens).map(|expression| Statement::Expression { expression }),
     }
 }
 
-const VAR_DECL_KEYWORD: &str = "var";
-const NULL_KEYWORD: &str = "null";
+fn block(
+    tokens: &mut Tokens<impl Iterator<Item = TokenWithMeta>>,
+) -> Result<StatementBlock, ParserError> {
+    match_token!(tokens.next(), Token::LeftBrace);
 
-pub(super) fn parse<'a>(
-    tokens: impl Iterator<Item = TokenWithMeta<'a>>,
-    context: &mut ParserContext,
-) -> Result<KoolElement, ParserError<'a>> {
-    let mut tokens = tokens.peekable();
-
-    // We expect var declarations, var assignments and the root element at the top level.
+    let mut statements = Vec::new();
     loop {
-        if let Some(TokenWithMeta {
-            token: Token::Variable(_),
-            ..
-        }) = tokens.peek()
-        {
-            parse_var_assignment(&mut tokens, context, false)?;
-            continue;
+        if_token!(tokens.peek(), &Token::RightBrace, {
+            let _ = tokens.next();
+            break;
+        });
+
+        let statement = statement(tokens)?;
+        statements.push(statement);
+    }
+
+    Ok(StatementBlock { statements })
+}
+
+fn var_declaration(
+    tokens: &mut Tokens<impl Iterator<Item = TokenWithMeta>>,
+) -> Result<Statement, ParserError> {
+    match_token!(tokens.next(), Token::Ident(keyword) => keyword, expected = "variable declaration keyword `var`");
+
+    let name =
+        match_token!(tokens.next(), Token::Ident(ident) => ident, expected = "a variable name");
+    match_token!(tokens.next(), Token::Equal);
+
+    let expression = expression(tokens)?;
+
+    Ok(Statement::VariableDeclaration {
+        variable: name,
+        right_side: expression,
+    })
+}
+
+/// We expect the name of the variable to be handed to us.
+fn var_assignment(
+    tokens: &mut Tokens<impl Iterator<Item = TokenWithMeta>>,
+    name: String,
+) -> Result<Statement, ParserError> {
+    match_token!(tokens.next(), Token::Equal);
+
+    let expression = expression(tokens)?;
+
+    Ok(Statement::VariableAssignment {
+        variable: name,
+        right_side: expression,
+    })
+}
+
+fn function_definition(
+    tokens: &mut Tokens<impl Iterator<Item = TokenWithMeta>>,
+) -> Result<Statement, ParserError> {
+    match_token!(tokens.next(), Token::Ident(keyword) => keyword, expected = "function definition keyword `def`");
+
+    let name =
+        match_token!(tokens.next(), Token::Ident(ident) => ident, expected = "a function name");
+    match_token!(tokens.next(), Token::LeftParen);
+
+    let mut params = Vec::new();
+    loop {
+        if_token!(tokens.peek(), &Token::RightParen, {
+            let _ = tokens.next();
+            break;
+        });
+
+        let param_name = match_token!(tokens.next(), Token::Ident(ident) => ident, expected = "a parameter name");
+        let TokenWithMeta { token: peek, meta } =
+            tokens.peek().ok_or(ParserError::UnexpectedEof {
+                expected: "rest of function parameters".to_owned(),
+            })?;
+
+        let default = match peek {
+            Token::Equal => {
+                // Consume equal token
+                let _ = tokens.next();
+                let Expression::Value(value) = expression(tokens)? else {
+                    return Err(ParserError::ExpectedValue);
+                };
+
+                Some(value)
+            }
+            Token::Comma => {
+                let _ = tokens.next();
+                None
+            }
+            Token::RightParen => None,
+            token => {
+                return Err(ParserError::UnexpectedToken(TokenWithMeta {
+                    token: token.clone(),
+                    meta: *meta,
+                }));
+            }
+        };
+
+        params.push(FunctionParam {
+            name: param_name.to_owned(),
+            default,
+        });
+    }
+
+    let code = block(tokens)?;
+
+    let function = Function { params, code };
+
+    Ok(Statement::FunctionDefinition {
+        name: name.to_owned(),
+        function,
+    })
+}
+
+/// We expect the name of the function to be handed to us.
+fn function_call(
+    tokens: &mut Tokens<impl Iterator<Item = TokenWithMeta>>,
+    name: String,
+) -> Result<Expression, ParserError> {
+    match_token!(tokens.next(), Token::LeftParen);
+
+    let mut args = HashMap::new();
+    let mut tail = Vec::new();
+
+    loop {
+        if_token!(tokens.peek(), &Token::RightParen, {
+            let _ = tokens.next();
+            break;
+        });
+
+        // 2 cases:
+        //      - <param>: <value>
+        //      - <value>
+        let peek = tokens.multi_peek(2);
+        match peek.get(1) {
+            Some(TokenWithMeta {
+                token: Token::Colon,
+                ..
+            }) => {
+                let param = match_token!(tokens.next(), Token::Ident(param) => param, expected = "param name");
+                match_token!(tokens.next(), Token::Colon);
+                let expression = expression(tokens)?;
+
+                if args.contains_key(&param) {
+                    return Err(ParserError::DuplicateArgument(param));
+                }
+
+                args.insert(param, expression);
+            }
+            _ => {
+                let expression = expression(tokens)?;
+                tail.push(expression);
+            }
         }
 
-        let ident = match_token!(tokens.next(), Token::Ident(ident) => ident, expected = "Element identifier");
-
-        match ident {
-            VAR_DECL_KEYWORD => parse_var_assignment(&mut tokens, context, true)?,
-            ident => {
-                return parse_element(&mut tokens, ident, context);
+        // An end of the arguments or a comma must follow
+        let TokenWithMeta { token: peek, meta } =
+            tokens.peek().ok_or(ParserError::UnexpectedEof {
+                expected: "comma or paren".to_owned(),
+            })?;
+        match peek {
+            Token::Comma => {
+                let _ = tokens.next();
+            }
+            Token::RightParen => {}
+            token => {
+                return Err(ParserError::UnexpectedToken(TokenWithMeta {
+                    token: token.clone(),
+                    meta: *meta,
+                }));
             }
         }
     }
+
+    Ok(Expression::FunctionCall { name, args, tail })
 }
 
-fn parse_var_assignment<'a>(
-    tokens: &mut Peekable<impl Iterator<Item = TokenWithMeta<'a>>>,
-    context: &mut ParserContext,
-    is_declaration: bool,
-) -> Result<(), ParserError<'a>> {
-    let name = if is_declaration {
-        match_token!(tokens.next(), Token::Ident(name) => name, expected = "Variable declaration")
-            .to_owned()
-    } else {
-        match_token!(tokens.next(), Token::Variable(name) => name, expected = "Variable name")
-    };
-
-    match_token!(tokens.next(), Token::Equal);
-
-    let expression = parse_expression(tokens, context)?;
-    let value = expression
-        .evaluate(&context.variables)
-        .map_err(ParserError::ExpressionEvaluation)?;
-
-    let old_value = context.variables.set(&name, value);
-    match (old_value, is_declaration) {
-        (Some(_), true) => Err(ParserError::VariableRedeclaration(name)),
-        (None, false) => Err(ParserError::UndeclaredVariable(name)),
-        _ => Ok(()),
-    }
-}
-
-fn parse_element<'a>(
-    tokens: &mut Peekable<impl Iterator<Item = TokenWithMeta<'a>>>,
-    ident: &'a str,
-    context: &mut ParserContext,
-) -> Result<KoolElement, ParserError<'a>> {
-    match_token!(tokens.next(), Token::LeftParen);
-
-    let mut element = ElementInConstruction {
-        ident,
-        values: HashMap::new(),
-        content: Expression::Value(Value::Null),
-    };
-    parse_body(tokens, &mut element, context)?;
-
-    match_token!(tokens.next(), Token::RightParen);
-
-    element
-        .try_construct(context)
-        .map_err(ParserError::Construction)
-}
-
-fn parse_body<'a>(
-    tokens: &mut Peekable<impl Iterator<Item = TokenWithMeta<'a>>>,
-    element: &mut ElementInConstruction<'a>,
-    context: &mut ParserContext,
-) -> Result<(), ParserError<'a>> {
-    let peek = tokens.peek().ok_or(ParserError::UnexpectedEof {
-        expected: "Element identifier, key identifier, list or an expression".to_owned(),
-    })?;
-
-    let ident = match peek {
-        TokenWithMeta {
-            token: Token::Ident(_),
-            ..
-        } => {
-            match_token!(tokens.next(), Token::Ident(ident) => ident, expected = "Unreachable")
-        }
-        _ => {
-            let expression = parse_expression(tokens, context)?;
-            element.content = expression;
-            return Ok(());
-        }
-    };
-
-    // Decide if it is a key or an element
-    match tokens.peek() {
-        Some(TokenWithMeta {
-            token: Token::Colon,
-            meta: _,
-        }) => {
-            parse_key_value(tokens, element, ident, context)?;
-
-            match_token!(tokens.next(), Token::Comma);
-
-            parse_body(tokens, element, context)
-        }
-        Some(TokenWithMeta {
-            token: Token::LeftParen,
-            meta: _,
-        }) => {
-            let inner_element = parse_element(tokens, ident, context)?;
-            element.content = Expression::Value(Value::Element(Box::new(inner_element)));
-            Ok(())
-        }
-        Some(token) => Err(ParserError::UnexpectedToken(token.clone())),
-        None => Err(ParserError::UnexpectedEof {
-            expected: "Key value pair or inner Element".to_owned(),
-        }),
-    }
-}
-
-fn parse_key_value<'a>(
-    tokens: &mut Peekable<impl Iterator<Item = TokenWithMeta<'a>>>,
-    element: &mut ElementInConstruction<'a>,
-    key: &'a str,
-    context: &mut ParserContext,
-) -> Result<(), ParserError<'a>> {
-    match_token!(tokens.next(), Token::Colon);
-
-    let expression = parse_expression(tokens, context)?;
-    element.values.insert(key, expression);
-
-    Ok(())
-}
-
-fn parse_expression<'a>(
-    tokens: &mut Peekable<impl Iterator<Item = TokenWithMeta<'a>>>,
-    context: &mut ParserContext,
-) -> Result<Expression, ParserError<'a>> {
-    let mut left = term(tokens, context)?;
+fn expression(
+    tokens: &mut Tokens<impl Iterator<Item = TokenWithMeta>>,
+) -> Result<Expression, ParserError> {
+    let mut left = term(tokens)?;
 
     while tokens
         .peek()
@@ -221,7 +309,7 @@ fn parse_expression<'a>(
             break;
         };
         let operator = token_to_operator(token)?;
-        let right = term(tokens, context)?;
+        let right = term(tokens)?;
 
         left = Expression::Binary {
             left: Box::new(left),
@@ -233,11 +321,10 @@ fn parse_expression<'a>(
     Ok(left)
 }
 
-fn term<'a>(
-    tokens: &mut Peekable<impl Iterator<Item = TokenWithMeta<'a>>>,
-    context: &mut ParserContext,
-) -> Result<Expression, ParserError<'a>> {
-    let mut left = unary(tokens, context)?;
+fn term(
+    tokens: &mut Tokens<impl Iterator<Item = TokenWithMeta>>,
+) -> Result<Expression, ParserError> {
+    let mut left = unary(tokens)?;
 
     while tokens
         .peek()
@@ -247,7 +334,7 @@ fn term<'a>(
             break;
         };
         let operator = token_to_operator(token)?;
-        let right = unary(tokens, context)?;
+        let right = unary(tokens)?;
 
         left = Expression::Binary {
             left: Box::new(left),
@@ -259,10 +346,9 @@ fn term<'a>(
     Ok(left)
 }
 
-fn unary<'a>(
-    tokens: &mut Peekable<impl Iterator<Item = TokenWithMeta<'a>>>,
-    context: &mut ParserContext,
-) -> Result<Expression, ParserError<'a>> {
+fn unary(
+    tokens: &mut Tokens<impl Iterator<Item = TokenWithMeta>>,
+) -> Result<Expression, ParserError> {
     if tokens
         .peek()
         .is_some_and(|TokenWithMeta { token, .. }| matches!(token, Token::Plus | Token::Minus))
@@ -273,22 +359,21 @@ fn unary<'a>(
             });
         };
         let operator = token_to_operator(token)?;
-        let operand = unary(tokens, context)?;
+        let operand = unary(tokens)?;
 
         Ok(Expression::Unary {
             operator,
             operand: Box::new(operand),
         })
     } else {
-        power(tokens, context)
+        power(tokens)
     }
 }
 
-fn power<'a>(
-    tokens: &mut Peekable<impl Iterator<Item = TokenWithMeta<'a>>>,
-    context: &mut ParserContext,
-) -> Result<Expression, ParserError<'a>> {
-    let mut left = primary(tokens, context)?;
+fn power(
+    tokens: &mut Tokens<impl Iterator<Item = TokenWithMeta>>,
+) -> Result<Expression, ParserError> {
+    let mut left = primary(tokens)?;
 
     while tokens
         .peek()
@@ -298,7 +383,7 @@ fn power<'a>(
             break;
         };
         let operator = token_to_operator(token)?;
-        let right = primary(tokens, context)?;
+        let right = primary(tokens)?;
 
         left = Expression::Binary {
             left: Box::new(left),
@@ -310,36 +395,36 @@ fn power<'a>(
     Ok(left)
 }
 
-fn primary<'a>(
-    tokens: &mut Peekable<impl Iterator<Item = TokenWithMeta<'a>>>,
-    context: &mut ParserContext,
-) -> Result<Expression, ParserError<'a>> {
+fn primary(
+    tokens: &mut Tokens<impl Iterator<Item = TokenWithMeta>>,
+) -> Result<Expression, ParserError> {
     let mut expression = if let Some(TokenWithMeta {
         token: Token::LeftBracket,
         ..
     }) = tokens.peek()
     {
-        parse_array(tokens, context)?
+        parse_array(tokens)?
     } else {
         let Some(TokenWithMeta { token, meta }) = tokens.next() else {
             return Err(ParserError::UnexpectedEof {
-                expected:
-                    "a number, a string, an array, an expression in parens, variable, or an element"
-                        .to_owned(),
+                expected: "anything expression like".to_owned(),
             });
         };
 
         match token {
-            Token::Ident(NULL_KEYWORD) => Expression::Value(Value::Null),
+            Token::Ident(ident) if ident == NULL_KEYWORD => Expression::Value(Value::Null),
+            // Either variable or function call
             Token::Ident(ident) => {
-                let element = parse_element(tokens, ident, context)?;
-                Expression::Value(Value::Element(Box::new(element)))
+                if_token!(tokens.peek(), &Token::LeftParen, {
+                    function_call(tokens, ident)?
+                } else {
+                    Expression::Variable(ident)
+                })
             }
             Token::Number(num) => Expression::Value(Value::Number(num)),
             Token::String(string) => Expression::Value(Value::String(string)),
-            Token::Variable(name) => Expression::Variable(name),
             Token::LeftParen => {
-                let expression = parse_expression(tokens, context)?;
+                let expression = expression(tokens)?;
                 match_token!(tokens.next(), Token::RightParen);
 
                 expression
@@ -353,7 +438,7 @@ fn primary<'a>(
         ..
     }) = tokens.peek()
     {
-        let index = parse_indexing(tokens, context)?;
+        let index = parse_indexing(tokens)?;
         expression = Expression::Binary {
             operator: Operator::Index,
             left: Box::new(expression),
@@ -364,10 +449,9 @@ fn primary<'a>(
     Ok(expression)
 }
 
-fn parse_array<'a>(
-    tokens: &mut Peekable<impl Iterator<Item = TokenWithMeta<'a>>>,
-    context: &mut ParserContext,
-) -> Result<Expression, ParserError<'a>> {
+fn parse_array(
+    tokens: &mut Tokens<impl Iterator<Item = TokenWithMeta>>,
+) -> Result<Expression, ParserError> {
     match_token!(tokens.next(), Token::LeftBracket);
 
     let mut array = Vec::new();
@@ -379,7 +463,7 @@ fn parse_array<'a>(
                 return Ok(Expression::Array(array));
             }
             _ => {
-                let expression = parse_expression(tokens, context)?;
+                let expression = expression(tokens)?;
                 array.push(expression);
             }
         }
@@ -396,20 +480,19 @@ fn parse_array<'a>(
     })
 }
 
-fn parse_indexing<'a>(
-    tokens: &mut Peekable<impl Iterator<Item = TokenWithMeta<'a>>>,
-    context: &mut ParserContext,
-) -> Result<Expression, ParserError<'a>> {
+fn parse_indexing(
+    tokens: &mut Tokens<impl Iterator<Item = TokenWithMeta>>,
+) -> Result<Expression, ParserError> {
     match_token!(tokens.next(), Token::LeftBracket);
 
-    let expression = parse_expression(tokens, context)?;
+    let expression = expression(tokens)?;
 
     match_token!(tokens.next(), Token::RightBracket);
 
     Ok(expression)
 }
 
-fn token_to_operator(token: TokenWithMeta<'_>) -> Result<Operator, ParserError<'_>> {
+fn token_to_operator(token: TokenWithMeta) -> Result<Operator, ParserError> {
     Ok(match token.token {
         Token::Plus => Operator::Add,
         Token::Minus => Operator::Sub,

@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::{elemental::ElementalMessage, language::Variables, style::StyleTree};
+use crate::{elemental::ElementalMessage, style::StyleTree};
 
 mod column;
 mod container;
@@ -9,13 +9,11 @@ mod image;
 mod row;
 mod stack;
 mod text;
-pub(crate) mod util;
-
-pub use error::ErrorElement;
 
 pub mod kool {
     pub use super::column::Column;
     pub use super::container::Container;
+    pub use super::error::Error;
     pub use super::image::Image;
     pub use super::row::Row;
     pub use super::stack::Stack;
@@ -25,7 +23,6 @@ pub mod kool {
 /// The context in which an element is buidl through `KoolBuilder`.
 #[derive(Clone, Debug)]
 pub struct BuildContext {
-    pub variables: Variables,
     pub style: Rc<StyleTree>,
 }
 
@@ -33,17 +30,16 @@ pub struct BuildContext {
 pub trait Element<'a> {
     type IcedElement;
 
-    fn build(&self, context: &'a BuildContext) -> Result<Self::IcedElement, ErrorElement>;
-
-    fn type_name() -> &'static str {
-        std::any::type_name::<Self>()
-    }
+    fn build(&self, context: &BuildContext) -> Self::IcedElement;
 }
 
 /// The base building block of Kool.
 /// Each variant roughly corresponds to an `iced` widget/element.
 #[derive(Clone, Debug)]
 pub enum KoolElement {
+    /* SPECIAL */
+    Error(kool::Error),
+
     /* BASIC */
     Text(kool::Text),
     Container(kool::Container),
@@ -55,24 +51,32 @@ pub enum KoolElement {
     Stack(kool::Stack),
 }
 
-macro_rules! build {
-    ($elem:ident, $context:expr) => {
-        match $elem.build($context) {
-            Ok(elem) => elem.into(),
-            Err(error) => error.build($context).into(),
+impl<'a> Element<'a> for KoolElement {
+    type IcedElement = iced::Element<'a, ElementalMessage>;
+
+    fn build(&self, context: &BuildContext) -> Self::IcedElement {
+        match self {
+            KoolElement::Error(error) => error.build(context).into(),
+            KoolElement::Text(text) => text.build(context).into(),
+            KoolElement::Container(container) => container.build(context).into(),
+            KoolElement::Image(image) => image.build(context).into(),
+            KoolElement::Column(column) => column.build(context).into(),
+            KoolElement::Row(row) => row.build(context).into(),
+            KoolElement::Stack(stack) => stack.build(context).into(),
         }
-    };
+    }
 }
 
 impl KoolElement {
-    pub fn build<'a>(&self, context: &'a BuildContext) -> iced::Element<'a, ElementalMessage> {
+    pub fn element_type(&self) -> &'static str {
         match self {
-            KoolElement::Text(text) => build!(text, context),
-            KoolElement::Container(container) => build!(container, context),
-            KoolElement::Image(image) => build!(image, context),
-            KoolElement::Column(column) => build!(column, context),
-            KoolElement::Row(row) => build!(row, context),
-            KoolElement::Stack(stack) => build!(stack, context),
+            KoolElement::Error(_) => "Error",
+            KoolElement::Text(_) => "Text",
+            KoolElement::Container(_) => "Container",
+            KoolElement::Image(_) => "Image",
+            KoolElement::Column(_) => "Column",
+            KoolElement::Row(_) => "Row",
+            KoolElement::Stack(_) => "Stack",
         }
     }
 }

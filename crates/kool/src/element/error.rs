@@ -1,17 +1,22 @@
-use crate::BuildContext;
+use crate::{BuildContext, Element};
 
 /// An element that displays an error message.
 /// Servers as the error type in `Result` returned from building widgets.
-pub struct ErrorElement {
+#[derive(Clone, Debug)]
+pub struct Error {
     message: String,
 }
 
-impl ErrorElement {
+impl Error {
     pub fn new(message: String) -> Self {
         Self { message }
     }
+}
 
-    pub fn build<'a>(&self, _context: &'a BuildContext) -> iced::widget::Text<'a> {
+impl<'a> Element<'a> for Error {
+    type IcedElement = iced::widget::Text<'a>;
+
+    fn build(&self, _context: &BuildContext) -> Self::IcedElement {
         iced::widget::text!("{}", self.message)
     }
 }

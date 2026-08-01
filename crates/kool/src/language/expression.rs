@@ -1,4 +1,6 @@
-use crate::language::{Value, Variables};
+use std::collections::HashMap;
+
+use crate::language::{Environment, FunctionError, Value};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Expression {
@@ -14,6 +16,11 @@ pub enum Expression {
         right: Box<Expression>,
     },
     Array(Vec<Expression>),
+    FunctionCall {
+        name: String,
+        args: HashMap<String, Expression>,
+        tail: Vec<Expression>,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -28,6 +35,8 @@ pub enum Operator {
 
 #[derive(Clone, Debug, thiserror::Error)]
 pub enum EvaluationError {
+    #[error("Function error: {0:?}")]
+    Function(Box<FunctionError>),
     #[error("Illegal combination of operator and values: {0:?}.")]
     IllegalOperation(Expression),
     #[error("Index out of bounds, value is: {value}, but index is: {index}")]
@@ -36,16 +45,26 @@ pub enum EvaluationError {
     UnexpecteNonPositiveInteger(i64),
     #[error("Unknown variable: {0}.")]
     UnknownVariable(String),
+    #[error("Unknown function: {0}.")]
+    UnknownFunction(String),
+}
+
+impl EvaluationError {
+    fn function(error: FunctionError) -> Self {
+        Self::Function(Box::new(error))
+    }
 }
 
 impl Expression {
     /// Evaluates the expression to a concrete `Value`.
-    pub fn evaluate(&self, variables: &Variables) -> Result<Value, EvaluationError> {
+    pub fn evaluate(&self, environment: &mut Environment) -> Result<Value, EvaluationError> {
         Ok(match self {
             Expression::Value(value) => value.clone(),
-            Expression::Variable(name) => variables.get(name).cloned().unwrap_or_default(),
+            Expression::Variable(name) => {
+                environment.get_variable(name).cloned().unwrap_or_default()
+            }
             Expression::Unary { operator, operand } => {
-                let value = operand.evaluate(variables)?;
+                let value = operand.evaluate(environment)?;
                 match (operator, value) {
                     (Operator::Sub, Value::Number(number)) => Value::Number(-number),
 
@@ -63,8 +82,8 @@ impl Expression {
                 left,
                 right,
             } => {
-                let left = left.evaluate(variables)?;
-                let right = right.evaluate(variables)?;
+                let left = left.evaluate(environment)?;
+                let right = right.evaluate(environment)?;
 
                 match (left, operator, right) {
                     // Number math
@@ -144,18 +163,42 @@ impl Expression {
                     }
                 }
             }
-            Expression::Array(array) => Value::Array(
-                array
-                    .iter()
-                    .map(|expression| expression.evaluate_or_null(variables))
-                    .collect(),
-            ),
+            Expression::Array(array) => {
+                let mut values = Vec::with_capacity(array.len());
+                for expression in array {
+                    let value = expression.evaluate_or_null(environment);
+                    values.push(value);
+                }
+
+                Value::Array(values)
+            }
+            Expression::FunctionCall { name, args, tail } => {
+                let function = environment
+                    .get_function(name)
+                    .ok_or(EvaluationError::UnknownFunction(name.clone()))?;
+
+                let mut call_args = function.default_args();
+                for (param, arg) in args {
+                    let arg = arg.evaluate(environment)?;
+                    call_args
+                        .set_arg(param, arg)
+                        .map_err(EvaluationError::function)?;
+                }
+                for expr in tail {
+                    let value = expr.evaluate(environment)?;
+                    call_args.add_tail(value);
+                }
+
+                function
+                    .call(call_args, environment)
+                    .map_err(EvaluationError::function)?
+            }
         })
     }
 
     /// Like `Self::evaluate` but for simplicity, any illogical/illegal operation evaluates into a `Value::Null`.
-    pub fn evaluate_or_null(&self, variables: &Variables) -> Value {
-        self.evaluate(variables).unwrap_or_default()
+    pub fn evaluate_or_null(&self, environment: &mut Environment) -> Value {
+        self.evaluate(environment).unwrap_or_default()
     }
 }
 

@@ -22,15 +22,14 @@
 //! ```
 
 use crate::{
-    element::KoolElement,
+    language::StatementBlock,
     parsing::{
         parser::{ParserError, parse},
         scanner::{ScannerError, scan},
     },
 };
-pub use parser::ParserContext;
 
-mod construction;
+mod multi_peek;
 mod parser;
 mod scanner;
 mod token;
@@ -42,26 +41,14 @@ pub struct Metadata {
 }
 
 #[derive(Clone, Debug)]
-pub enum ScanAndParserError<'a> {
+pub enum ScanAndParserError {
     Scanner(ScannerError),
-    Parser(ParserError<'a>),
+    Parser(ParserError),
 }
 
-pub fn scan_and_parse<'a>(
-    input: &'a str,
-) -> Result<(ParserContext, KoolElement), ScanAndParserError<'a>> {
+pub fn scan_and_parse(input: &str) -> Result<StatementBlock, ScanAndParserError> {
     let tokens = scan(input).map_err(ScanAndParserError::Scanner)?;
+    let root = parse(tokens.into_iter()).map_err(ScanAndParserError::Parser)?;
 
-    let mut context = ParserContext::default();
-    let element = parse(tokens.into_iter(), &mut context).map_err(ScanAndParserError::Parser)?;
-
-    Ok((context, element))
-}
-
-pub fn scan_and_parse_with_context<'a>(
-    input: &'a str,
-    context: &mut ParserContext,
-) -> Result<KoolElement, ScanAndParserError<'a>> {
-    let tokens = scan(input).map_err(ScanAndParserError::Scanner)?;
-    parse(tokens.into_iter(), context).map_err(ScanAndParserError::Parser)
+    Ok(root)
 }

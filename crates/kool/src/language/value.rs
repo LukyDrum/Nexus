@@ -17,7 +17,7 @@ impl Display for Value {
         match self {
             Value::Null => write!(f, "null"),
             Value::Number(number) => write!(f, "{number}"),
-            Value::String(string) => write!(f, "{string}"),
+            Value::String(string) => write!(f, "\"{string}\""),
             Value::Array(array) => {
                 write!(f, "[")?;
 
@@ -27,7 +27,7 @@ impl Display for Value {
 
                 write!(f, "]")
             }
-            Value::Element(_element) => write!(f, "<element>"),
+            Value::Element(element) => write!(f, "<{}>", element.element_type()),
         }
     }
 }
