@@ -20,7 +20,7 @@ where
     pub fn peek(&mut self) -> Option<&Item> {
         if self.peeked.is_empty() {
             let next = self.inner.next()?;
-            self.peeked.insert(0, next);
+            self.peeked.push(next);
         }
 
         self.peeked.last()
@@ -33,7 +33,7 @@ where
                 break;
             };
 
-            self.peeked.insert(0, next);
+            self.peeked.push(next);
         }
 
         let count = self.peeked.len().min(count);
@@ -52,7 +52,7 @@ where
         if self.peeked.is_empty() {
             self.inner.next()
         } else {
-            self.peeked.pop()
+            Some(self.peeked.remove(0))
         }
     }
 }
