@@ -83,4 +83,19 @@ impl Environment {
             .functions
             .insert(name, Rc::new(function))
     }
+
+    /// Only imports the inner most scope from `other`
+    pub fn import(&mut self, mut other: Environment) {
+        let this = self
+            .scopes
+            .last_mut()
+            .expect("Scopes being empty should never happen");
+        let other = other
+            .scopes
+            .pop()
+            .expect("Scopes being empty should never happen");
+
+        this.variables.extend(other.variables);
+        this.functions.extend(other.functions);
+    }
 }

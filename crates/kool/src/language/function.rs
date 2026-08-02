@@ -1,13 +1,13 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Debug, rc::Rc};
 
 use crate::language::{Environment, StatementBlock, StatementExecutionError, Value};
 
-const TAIL_VAR_NAME: &str = "tail";
+pub const TAIL_VAR_NAME: &str = "tail";
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct Function {
     pub params: Vec<FunctionParam>,
-    pub code: StatementBlock,
+    pub code: FunctionCode,
 }
 
 impl Function {
@@ -48,10 +48,7 @@ impl Function {
         environment.define_variable(TAIL_VAR_NAME.to_owned(), tail);
 
         // Execute functions code in the newly created environment
-        let return_value = self
-            .code
-            .execute(environment)
-            .map_err(FunctionError::Execution);
+        let return_value = self.code.execute(environment);
 
         environment.pop_scope();
 
@@ -63,6 +60,30 @@ impl Function {
         environment: &mut Environment,
     ) -> Result<Value, FunctionError> {
         self.call(self.default_args(), environment)
+    }
+}
+
+#[derive(Clone)]
+pub enum FunctionCode {
+    Block(StatementBlock),
+    Host(Rc<dyn Fn(&mut Environment) -> Value>),
+}
+
+impl Debug for FunctionCode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Block(block) => f.debug_tuple("Block").field(block).finish(),
+            Self::Host(_) => write!(f, "host function"),
+        }
+    }
+}
+
+impl FunctionCode {
+    pub fn execute(&self, environment: &mut Environment) -> Result<Value, FunctionError> {
+        match self {
+            Self::Block(block) => block.execute(environment).map_err(FunctionError::Execution),
+            Self::Host(function) => Ok(function(environment)),
+        }
     }
 }
 

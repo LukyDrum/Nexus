@@ -2,8 +2,8 @@
 #![allow(unreachable_patterns)]
 
 use crate::language::{
-    EvaluationError, Expression, Function, FunctionParam, Operator, Statement, StatementBlock,
-    Value,
+    EvaluationError, Expression, Function, FunctionCode, FunctionParam, Operator, Statement,
+    StatementBlock, Value,
 };
 use crate::parsing::multi_peek::MultiPeekable;
 use std::collections::HashMap;
@@ -225,7 +225,10 @@ fn function_definition(
 
     let code = block(tokens)?;
 
-    let function = Function { params, code };
+    let function = Function {
+        params,
+        code: FunctionCode::Block(code),
+    };
 
     Ok(Statement::FunctionDefinition {
         name: name.to_owned(),

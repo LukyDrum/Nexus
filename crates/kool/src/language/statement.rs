@@ -1,6 +1,6 @@
 use crate::language::{Environment, EvaluationError, Expression, Function, Value};
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub enum Statement {
     VariableDeclaration {
         variable: String,
@@ -86,7 +86,7 @@ impl Statement {
 }
 
 /// Used in `Statement` and `Function` as well.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct StatementBlock {
     pub statements: Vec<Statement>,
 }

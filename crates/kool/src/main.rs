@@ -2,7 +2,9 @@ use std::path::PathBuf;
 
 use clap::Parser;
 use kool::{
-    ElementalArgs, ElementalConfig, ElementalWidget, Environment, KoolWidgetRunner, scan_and_parse,
+    ElementalArgs, ElementalConfig, ElementalWidget, KoolWidgetRunner,
+    language::{Environment, standard_environment},
+    scan_and_parse,
 };
 
 fn main() {
@@ -22,6 +24,8 @@ fn main() {
 
     // Setup runtime
     let mut runtime = Environment::new();
+    runtime.import(standard_environment());
+
     for pair in args.var {
         runtime.define_variable(pair.name, pair.value);
     }
