@@ -1,4 +1,9 @@
-use crate::{BuildContext, Element};
+use std::rc::Rc;
+
+use crate::{
+    BuildContext, Element,
+    language::{Function, FunctionCode},
+};
 
 /// An element that displays an error message.
 /// Servers as the error type in `Result` returned from building widgets.
@@ -18,5 +23,15 @@ impl<'a> Element<'a> for Error {
 
     fn build(&self, _context: &BuildContext) -> Self::IcedElement {
         iced::widget::text!("{}", self.message)
+    }
+
+    fn kool_function() -> (&'static str, Function) {
+        (
+            "__Error",
+            Function {
+                params: Vec::new(),
+                code: FunctionCode::Host(Rc::new(|_env| crate::language::Value::Null)),
+            },
+        )
     }
 }

@@ -1,7 +1,15 @@
+use std::rc::Rc;
+
 use crate::{
     KoolElement,
-    element::{BuildContext, Element},
+    element::{
+        BuildContext, Element,
+        common::{KEY_VAR, key_function_param},
+        kool::Error,
+    },
     elemental::ElementalMessage,
+    get_var_or_elem_error,
+    language::{Environment, Function, FunctionCode, TAIL_VAR, Value},
     style::{StyleKey, WithStyle, WithStyleKey},
 };
 
@@ -26,5 +34,36 @@ impl<'a> Element<'a> for Column {
         } else {
             widget.with_style_key(key).with_style(style).element()
         }
+    }
+
+    fn kool_function() -> (&'static str, Function) {
+        const NAME: &str = "Column";
+
+        let params = vec![key_function_param()];
+
+        let code = |environment: &mut Environment| -> Value {
+            let key = get_var_or_elem_error!(KEY_VAR, environment, Value::String(key) => key);
+
+            let tail = get_var_or_elem_error!(TAIL_VAR, environment, Value::Array(array) => array);
+            let content = tail
+                .into_iter()
+                .map(|value| match value {
+                    Value::Element(element) => *element,
+                    other => {
+                        KoolElement::Error(Error::new(format!("expected element, found: {other}")))
+                    }
+                })
+                .collect();
+
+            Value::Element(Box::new(KoolElement::Column(Self { key, content })))
+        };
+
+        (
+            NAME,
+            Function {
+                params,
+                code: FunctionCode::Host(Rc::new(code)),
+            },
+        )
     }
 }

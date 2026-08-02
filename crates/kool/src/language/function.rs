@@ -2,7 +2,7 @@ use std::{collections::HashMap, fmt::Debug, rc::Rc};
 
 use crate::language::{Environment, StatementBlock, StatementExecutionError, Value};
 
-pub const TAIL_VAR_NAME: &str = "tail";
+pub const TAIL_VAR: &str = "tail";
 
 #[derive(Clone, Debug)]
 pub struct Function {
@@ -45,7 +45,7 @@ impl Function {
         } else {
             Value::Array(tail)
         };
-        environment.define_variable(TAIL_VAR_NAME.to_owned(), tail);
+        environment.define_variable(TAIL_VAR.to_owned(), tail);
 
         // Execute functions code in the newly created environment
         let return_value = self.code.execute(environment);

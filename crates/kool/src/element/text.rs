@@ -1,5 +1,14 @@
+use std::rc::Rc;
+
 use crate::{
-    element::{BuildContext, Element},
+    KoolElement,
+    element::{
+        BuildContext, Element,
+        common::{KEY_VAR, key_function_param},
+        kool::Error,
+    },
+    get_var_or_elem_error,
+    language::{Environment, Function, FunctionCode, TAIL_VAR, Value},
     style::{StyleKey, WithStyle, WithStyleKey},
 };
 
@@ -25,5 +34,29 @@ impl<'a> Element<'a> for Text {
         };
 
         widget
+    }
+
+    fn kool_function() -> (&'static str, Function) {
+        const NAME: &str = "Text";
+
+        let params = vec![key_function_param()];
+
+        let code = |environment: &mut Environment| -> Value {
+            let key = get_var_or_elem_error!(KEY_VAR, environment, Value::String(key) => key);
+            let content = get_var_or_elem_error!(TAIL_VAR, environment, value => value);
+
+            Value::Element(Box::new(KoolElement::Text(Self {
+                key,
+                content: content.to_string(),
+            })))
+        };
+
+        (
+            NAME,
+            Function {
+                params,
+                code: FunctionCode::Host(Rc::new(code)),
+            },
+        )
     }
 }

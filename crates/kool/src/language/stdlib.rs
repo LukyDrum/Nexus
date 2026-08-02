@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::language::{Environment, Function, FunctionCode, TAIL_VAR_NAME, Value};
+use crate::language::{Environment, Function, FunctionCode, TAIL_VAR, Value};
 
 pub fn standard_environment() -> Environment {
     let mut environment = Environment::new();
@@ -14,7 +14,7 @@ fn print_function() -> Function {
     let params = Vec::new();
     let print_impl = |environment: &mut Environment| -> Value {
         let null = Value::Null;
-        let tail = environment.get_variable(TAIL_VAR_NAME).unwrap_or(&null);
+        let tail = environment.get_variable(TAIL_VAR).unwrap_or(&null);
 
         println!("{tail}");
 

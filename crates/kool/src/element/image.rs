@@ -1,5 +1,14 @@
+use std::rc::Rc;
+
 use crate::{
-    element::{BuildContext, Element},
+    KoolElement,
+    element::{
+        BuildContext, Element,
+        common::{KEY_VAR, key_function_param},
+        kool::Error,
+    },
+    get_var_or_elem_error,
+    language::{Environment, Function, FunctionCode, TAIL_VAR, Value},
     style::{StyleKey, WithStyle, WithStyleKey},
 };
 
@@ -25,5 +34,26 @@ impl<'a> Element<'a> for Image {
         };
 
         widget
+    }
+
+    fn kool_function() -> (&'static str, Function) {
+        const NAME: &str = "Image";
+
+        let params = vec![key_function_param()];
+
+        let code = |environment: &mut Environment| -> Value {
+            let key = get_var_or_elem_error!(KEY_VAR, environment, Value::String(key) => key);
+            let file = get_var_or_elem_error!(TAIL_VAR, environment, Value::String(file) => file);
+
+            Value::Element(Box::new(KoolElement::Image(Self { key, file })))
+        };
+
+        (
+            NAME,
+            Function {
+                params,
+                code: FunctionCode::Host(Rc::new(code)),
+            },
+        )
     }
 }

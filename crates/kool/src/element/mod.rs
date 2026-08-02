@@ -1,8 +1,13 @@
 use std::rc::Rc;
 
-use crate::{elemental::ElementalMessage, style::StyleTree};
+use crate::{
+    elemental::ElementalMessage,
+    language::{Environment, Function},
+    style::StyleTree,
+};
 
 mod column;
+mod common;
 mod container;
 mod error;
 mod image;
@@ -31,6 +36,8 @@ pub trait Element<'a> {
     type IcedElement;
 
     fn build(&self, context: &BuildContext) -> Self::IcedElement;
+
+    fn kool_function() -> (&'static str, Function);
 }
 
 /// The base building block of Kool.
@@ -51,10 +58,8 @@ pub enum KoolElement {
     Stack(kool::Stack),
 }
 
-impl<'a> Element<'a> for KoolElement {
-    type IcedElement = iced::Element<'a, ElementalMessage>;
-
-    fn build(&self, context: &BuildContext) -> Self::IcedElement {
+impl KoolElement {
+    pub fn build<'a>(&self, context: &BuildContext) -> iced::Element<'a, ElementalMessage> {
         match self {
             KoolElement::Error(error) => error.build(context).into(),
             KoolElement::Text(text) => text.build(context).into(),
@@ -65,9 +70,7 @@ impl<'a> Element<'a> for KoolElement {
             KoolElement::Stack(stack) => stack.build(context).into(),
         }
     }
-}
 
-impl KoolElement {
     pub fn element_type(&self) -> &'static str {
         match self {
             KoolElement::Error(_) => "Error",
@@ -87,3 +90,22 @@ impl PartialEq for KoolElement {
     }
 }
 impl Eq for KoolElement {}
+
+pub fn element_environment() -> Environment {
+    let functions = [
+        kool::Error::kool_function(),
+        kool::Text::kool_function(),
+        kool::Container::kool_function(),
+        kool::Image::kool_function(),
+        kool::Column::kool_function(),
+        kool::Row::kool_function(),
+        kool::Stack::kool_function(),
+    ];
+
+    let mut environment = Environment::new();
+    for (name, func) in functions {
+        environment.define_function(name.to_owned(), func);
+    }
+
+    environment
+}
