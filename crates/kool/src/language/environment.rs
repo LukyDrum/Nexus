@@ -1,6 +1,6 @@
-use std::{collections::HashMap, rc::Rc};
+use std::{collections::HashMap, sync::Arc};
 
-use crate::language::{Function, Value};
+use crate::language::{Function, Library, Value};
 
 #[derive(Clone, Debug)]
 pub struct Environment {
@@ -10,7 +10,7 @@ pub struct Environment {
 #[derive(Clone, Debug, Default)]
 struct Scope {
     variables: HashMap<String, Value>,
-    functions: HashMap<String, Rc<Function>>,
+    functions: HashMap<String, Arc<Function>>,
 }
 
 impl Environment {
@@ -64,7 +64,7 @@ impl Environment {
     }
 
     /// Looks up a function starting from the innermost scope outwards.
-    pub fn get_function(&self, name: &str) -> Option<Rc<Function>> {
+    pub fn get_function(&self, name: &str) -> Option<Arc<Function>> {
         for scope in self.scopes.iter().rev() {
             if let Some(function) = scope.functions.get(name) {
                 return Some(function.clone());
@@ -76,26 +76,37 @@ impl Environment {
 
     /// Sets function in the current (innermost) environment only.
     /// Returns the previous function defined under this name.
-    pub fn define_function(&mut self, name: String, function: Function) -> Option<Rc<Function>> {
+    pub fn define_function(&mut self, name: String, function: Function) -> Option<Arc<Function>> {
         self.scopes
             .last_mut()
             .expect("Scopes being empty should never happen")
             .functions
-            .insert(name, Rc::new(function))
+            .insert(name, Arc::new(function))
     }
 
-    /// Only imports the inner most scope from `other`
-    pub fn import(&mut self, mut other: Environment) {
-        let this = self
+    /// Converts the whole environment into a `Library`.
+    /// Libraries contain only functions.
+    pub fn into_library(self) -> Library {
+        let functions = self
+            .scopes
+            .into_iter()
+            .fold(HashMap::new(), |mut lib, scope| {
+                lib.extend(scope.functions);
+                lib
+            });
+
+        Library { functions }
+    }
+
+    /// Imports `library` into the inner most scope.
+    pub fn import(&mut self, library: Library) {
+        let scope = self
             .scopes
             .last_mut()
             .expect("Scopes being empty should never happen");
-        let other = other
-            .scopes
-            .pop()
-            .expect("Scopes being empty should never happen");
 
-        this.variables.extend(other.variables);
-        this.functions.extend(other.functions);
+        let Library { functions } = library;
+
+        scope.functions.extend(functions);
     }
 }

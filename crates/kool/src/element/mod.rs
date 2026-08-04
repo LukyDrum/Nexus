@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use crate::{
     elemental::ElementalMessage,
-    language::{Environment, Function},
+    language::{Function, Library},
     style::StyleTree,
 };
 
@@ -91,8 +91,8 @@ impl PartialEq for KoolElement {
 }
 impl Eq for KoolElement {}
 
-pub fn element_environment() -> Environment {
-    let functions = [
+pub fn element_library() -> Library {
+    Library::from([
         kool::Error::kool_function(),
         kool::Text::kool_function(),
         kool::Container::kool_function(),
@@ -100,12 +100,5 @@ pub fn element_environment() -> Environment {
         kool::Column::kool_function(),
         kool::Row::kool_function(),
         kool::Stack::kool_function(),
-    ];
-
-    let mut environment = Environment::new();
-    for (name, func) in functions {
-        environment.define_function(name.to_owned(), func);
-    }
-
-    environment
+    ])
 }

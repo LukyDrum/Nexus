@@ -1,13 +1,9 @@
 use std::rc::Rc;
 
-use crate::language::{Environment, Function, FunctionCode, TAIL_VAR, Value};
+use crate::language::{Environment, Function, FunctionCode, Library, TAIL_VAR, Value};
 
-pub fn standard_environment() -> Environment {
-    let mut environment = Environment::new();
-
-    environment.define_function("print".to_owned(), print_function());
-
-    environment
+pub fn standard_library() -> Library {
+    Library::from([("print", print_function())])
 }
 
 fn print_function() -> Function {

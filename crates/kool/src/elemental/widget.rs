@@ -1,7 +1,7 @@
-use std::{process::Command, rc::Rc, time::Duration};
+use std::{process::Command, sync::Arc, time::Duration};
 
 use crate::{
-    Element, KoolWidget,
+    KoolWidget,
     element::{BuildContext, KoolElement, kool},
     language::{Environment, Function, Value},
     settings::WidgetSettings,
@@ -18,7 +18,7 @@ pub struct ElementalWidget {
 
     root: KoolElement,
     runtime: Environment,
-    view_function: Rc<Function>,
+    view_function: Arc<Function>,
     commands: Vec<RepeatingCommand>,
 }
 
