@@ -13,13 +13,15 @@ struct Scope {
     functions: HashMap<String, Arc<Function>>,
 }
 
-impl Environment {
-    pub fn new() -> Self {
+impl Default for Environment {
+    fn default() -> Self {
         Self {
             scopes: vec![Scope::default()],
         }
     }
+}
 
+impl Environment {
     /// Pushes a new scope onto the stack.
     pub fn push_scope(&mut self) {
         self.scopes.push(Scope::default());

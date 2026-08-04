@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use crate::{
     KoolElement,
     element::{
@@ -29,13 +27,11 @@ impl<'a> Element<'a> for Row {
         let children = self.content.iter().map(|child| child.build(context));
         let widget = iced::widget::Row::new().extend(children);
 
-        let widget = if key.is_empty() {
+        if key.is_empty() {
             widget.with_style(style)
         } else {
             widget.with_style_key(key).with_style(style).element()
-        };
-
-        widget
+        }
     }
 
     fn kool_function() -> (&'static str, Function) {
@@ -43,7 +39,7 @@ impl<'a> Element<'a> for Row {
 
         let params = vec![key_function_param()];
 
-        let code = |environment: &mut Environment| -> Value {
+        let function = |environment: &mut Environment| -> Value {
             let key = get_var_or_elem_error!(KEY_VAR, environment, Value::String(key) => key);
 
             let tail = get_var_or_elem_error!(TAIL_VAR, environment, Value::Array(array) => array);
@@ -64,7 +60,7 @@ impl<'a> Element<'a> for Row {
             NAME,
             Function {
                 params,
-                code: FunctionCode::Host(Rc::new(code)),
+                code: FunctionCode::new_host(function),
             },
         )
     }

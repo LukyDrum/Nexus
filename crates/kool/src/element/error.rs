@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use crate::{
     BuildContext, Element,
     language::{Function, FunctionCode},
@@ -30,7 +28,7 @@ impl<'a> Element<'a> for Error {
             "__Error",
             Function {
                 params: Vec::new(),
-                code: FunctionCode::Host(Rc::new(|_env| crate::language::Value::Null)),
+                code: FunctionCode::new_host(|_env| crate::language::Value::Null),
             },
         )
     }

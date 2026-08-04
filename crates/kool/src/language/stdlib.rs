@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use crate::language::{Environment, Function, FunctionCode, Library, TAIL_VAR, Value};
 
 pub fn standard_library() -> Library {
@@ -19,6 +17,6 @@ fn print_function() -> Function {
 
     Function {
         params,
-        code: FunctionCode::Host(Rc::new(print_impl)),
+        code: FunctionCode::new_host(print_impl),
     }
 }

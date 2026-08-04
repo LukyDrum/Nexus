@@ -23,7 +23,7 @@ fn main() {
         scan_and_parse(&kool_source).expect("Failed to scan and parse the source code");
 
     // Setup runtime
-    let mut runtime = Environment::new();
+    let mut runtime = Environment::default();
     runtime.import(standard_library());
     runtime.import(element_library());
 

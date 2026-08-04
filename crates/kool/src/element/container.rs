@@ -1,5 +1,4 @@
 use crate::element::kool::Error;
-use std::rc::Rc;
 
 use crate::{
     KoolElement,
@@ -28,13 +27,11 @@ impl<'a> Element<'a> for Container {
 
         let widget = iced::widget::Container::new(self.content.build(context));
 
-        let widget = if key.is_empty() {
+        if key.is_empty() {
             widget.with_style(style)
         } else {
             widget.with_style_key(key).with_style(style).element()
-        };
-
-        widget
+        }
     }
 
     fn kool_function() -> (&'static str, Function) {
@@ -42,7 +39,7 @@ impl<'a> Element<'a> for Container {
 
         let params = vec![key_function_param()];
 
-        let code = |environment: &mut Environment| -> Value {
+        let function = |environment: &mut Environment| -> Value {
             let key = get_var_or_elem_error!(KEY_VAR, environment, Value::String(key) => key);
             let content =
                 get_var_or_elem_error!(TAIL_VAR, environment, Value::Element(element) => element);
@@ -54,7 +51,7 @@ impl<'a> Element<'a> for Container {
             NAME,
             Function {
                 params,
-                code: FunctionCode::Host(Rc::new(code)),
+                code: FunctionCode::new_host(function),
             },
         )
     }

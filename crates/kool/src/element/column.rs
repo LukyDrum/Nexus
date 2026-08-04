@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use crate::{
     KoolElement,
     element::{
@@ -41,7 +39,7 @@ impl<'a> Element<'a> for Column {
 
         let params = vec![key_function_param()];
 
-        let code = |environment: &mut Environment| -> Value {
+        let function = |environment: &mut Environment| -> Value {
             let key = get_var_or_elem_error!(KEY_VAR, environment, Value::String(key) => key);
 
             let tail = get_var_or_elem_error!(TAIL_VAR, environment, Value::Array(array) => array);
@@ -62,7 +60,7 @@ impl<'a> Element<'a> for Column {
             NAME,
             Function {
                 params,
-                code: FunctionCode::Host(Rc::new(code)),
+                code: FunctionCode::new_host(function),
             },
         )
     }

@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt::Debug, rc::Rc};
+use std::{collections::HashMap, fmt::Debug, sync::Arc};
 
 use crate::language::{Environment, StatementBlock, StatementExecutionError, Value};
 
@@ -66,7 +66,7 @@ impl Function {
 #[derive(Clone)]
 pub enum FunctionCode {
     Block(StatementBlock),
-    Host(Rc<dyn Fn(&mut Environment) -> Value>),
+    Host(Arc<dyn Fn(&mut Environment) -> Value + Send + Sync>),
 }
 
 impl Debug for FunctionCode {
@@ -79,6 +79,10 @@ impl Debug for FunctionCode {
 }
 
 impl FunctionCode {
+    pub fn new_host(function: impl Fn(&mut Environment) -> Value + Send + Sync + 'static) -> Self {
+        Self::Host(Arc::new(function))
+    }
+
     pub fn execute(&self, environment: &mut Environment) -> Result<Value, FunctionError> {
         match self {
             Self::Block(block) => block.execute(environment).map_err(FunctionError::Execution),
