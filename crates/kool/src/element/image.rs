@@ -2,11 +2,11 @@ use crate::{
     KoolElement,
     element::{
         BuildContext, Element,
-        common::{KEY_VAR, key_function_param},
+        common::{CONTENT_PARAM, KEY_PARAM, element_base_params},
         kool::Error,
     },
     get_var_or_elem_error,
-    language::{Environment, Function, FunctionCode, TAIL_VAR, Value},
+    language::{Environment, Function, FunctionCode, Value},
     style::{StyleKey, WithStyle, WithStyleKey},
 };
 
@@ -35,11 +35,10 @@ impl<'a> Element<'a> for Image {
     fn kool_function() -> (&'static str, Function) {
         const NAME: &str = "Image";
 
-        let params = vec![key_function_param()];
-
         let function = |environment: &mut Environment| -> Value {
-            let key = get_var_or_elem_error!(KEY_VAR, environment, Value::String(key) => key);
-            let file = get_var_or_elem_error!(TAIL_VAR, environment, Value::String(file) => file);
+            let key = get_var_or_elem_error!(KEY_PARAM, environment, Value::String(key) => key);
+            let file =
+                get_var_or_elem_error!(CONTENT_PARAM, environment, Value::String(file) => file);
 
             Value::Element(Box::new(KoolElement::Image(Self { key, file })))
         };
@@ -47,7 +46,7 @@ impl<'a> Element<'a> for Image {
         (
             NAME,
             Function {
-                params,
+                params: element_base_params(),
                 code: FunctionCode::new_host(function),
             },
         )

@@ -2,12 +2,12 @@ use crate::{
     KoolElement,
     element::{
         BuildContext, Element,
-        common::{KEY_VAR, key_function_param},
+        common::{CONTENT_PARAM, KEY_PARAM, element_base_params},
         kool::Error,
     },
     elemental::ElementalMessage,
     get_var_or_elem_error,
-    language::{Environment, Function, FunctionCode, TAIL_VAR, Value},
+    language::{Environment, Function, FunctionCode, Value},
     style::{StyleKey, WithStyle, WithStyleKey},
 };
 
@@ -37,13 +37,12 @@ impl<'a> Element<'a> for Row {
     fn kool_function() -> (&'static str, Function) {
         const NAME: &str = "Row";
 
-        let params = vec![key_function_param()];
-
         let function = |environment: &mut Environment| -> Value {
-            let key = get_var_or_elem_error!(KEY_VAR, environment, Value::String(key) => key);
+            let key = get_var_or_elem_error!(KEY_PARAM, environment, Value::String(key) => key);
 
-            let tail = get_var_or_elem_error!(TAIL_VAR, environment, Value::Array(array) => array);
-            let content = tail
+            let content =
+                get_var_or_elem_error!(CONTENT_PARAM, environment, Value::Array(array) => array);
+            let content = content
                 .into_iter()
                 .map(|value| match value {
                     Value::Element(element) => *element,
@@ -59,7 +58,7 @@ impl<'a> Element<'a> for Row {
         (
             NAME,
             Function {
-                params,
+                params: element_base_params(),
                 code: FunctionCode::new_host(function),
             },
         )

@@ -23,7 +23,7 @@ where
             self.peeked.push(next);
         }
 
-        self.peeked.last()
+        self.peeked.first()
     }
 
     pub fn multi_peek(&mut self, count: usize) -> &[Item] {

@@ -186,7 +186,9 @@ impl Expression {
                 }
                 for expr in tail {
                     let value = expr.evaluate(environment)?;
-                    call_args.add_tail(value);
+                    call_args
+                        .add_tail(value)
+                        .map_err(|error| EvaluationError::Function(Box::new(error)))?;
                 }
 
                 function

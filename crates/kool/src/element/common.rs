@@ -1,12 +1,14 @@
-use crate::language::{FunctionParam, Value};
+use crate::language::{FunctionParams, Value};
 
-pub(super) const KEY_VAR: &str = "key";
+pub(super) const KEY_PARAM: &str = "key";
+/// Name of the tail parameter in basic element function params.
+pub(super) const CONTENT_PARAM: &str = "content";
 
-pub(super) fn key_function_param() -> FunctionParam {
-    FunctionParam {
-        name: "key".to_owned(),
-        default: Some(Value::String("".to_owned())),
-    }
+/// Returns basic `FunctionParams` with a `key` parameter and a tail parameter named `content`.
+pub(super) fn element_base_params() -> FunctionParams {
+    FunctionParams::default()
+        .with_param(KEY_PARAM.to_owned(), Some(Value::String(String::new())))
+        .with_tail(CONTENT_PARAM)
 }
 
 #[macro_export]

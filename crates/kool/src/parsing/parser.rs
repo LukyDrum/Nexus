@@ -2,7 +2,7 @@
 #![allow(unreachable_patterns)]
 
 use crate::language::{
-    EvaluationError, Expression, Function, FunctionCode, FunctionParam, Operator, Statement,
+    EvaluationError, Expression, Function, FunctionCode, FunctionParams, Operator, Statement,
     StatementBlock, Value,
 };
 use crate::parsing::multi_peek::MultiPeekable;
@@ -17,9 +17,17 @@ pub enum ParserError {
     DuplicateArgument(String),
     ExpectedValue,
     ExpressionEvaluation(EvaluationError),
+    MultipleTailParams {
+        function: String,
+    },
     UndeclaredVariable(String),
-    UnexpectedToken(TokenWithMeta),
-    UnexpectedEof { expected: String },
+    UnexpectedToken {
+        token: TokenWithMeta,
+        expected: &'static str,
+    },
+    UnexpectedEof {
+        expected: String,
+    },
     VariableRedeclaration(String),
 }
 
@@ -30,7 +38,12 @@ macro_rules! match_token {
                 token: $pat,
                 meta: _,
             }) => $value,
-            Some(token) => return Err(ParserError::UnexpectedToken(token.clone())),
+            Some(token) => {
+                return Err(ParserError::UnexpectedToken {
+                    token: token.clone(),
+                    expected: $expected,
+                })
+            }
             None => {
                 return Err(ParserError::UnexpectedEof {
                     expected: $expected.to_owned(),
@@ -41,7 +54,12 @@ macro_rules! match_token {
     ($token:expr, $expected:expr) => {
         match $token {
             Some(TokenWithMeta { token, meta: _ }) if token == $expected => {}
-            Some(token) => return Err(ParserError::UnexpectedToken(token.clone())),
+            Some(token) => {
+                return Err(ParserError::UnexpectedToken {
+                    token: token.clone(),
+                    expected: stringify!($expected),
+                })
+            }
             None => {
                 return Err(ParserError::UnexpectedEof {
                     expected: format!("{:?}", $expected),
@@ -52,16 +70,16 @@ macro_rules! match_token {
 }
 
 macro_rules! if_token {
-    ($token:expr, $expected:expr, $code:block) => {
+    ($token:expr, $expected:pat, $code:block) => {
         if_token!($token, $expected, $code else {})
     };
-    ($token:expr, $expected:expr, $true:block else $false:block) => {
+    ($token:expr, $expected:pat, $true:block else $false:block) => {
         match $token {
-            Some(TokenWithMeta { token, meta: _ }) if token == $expected => $true,
+            Some(TokenWithMeta { token, meta: _ }) if matches!(token, $expected) => $true,
             Some(_other) => $false,
             None => {
                 return Err(ParserError::UnexpectedEof {
-                    expected: format!("{:?}", $expected),
+                    expected: format!("{:?}", stringify!($expected)),
                 })
             }
         }
@@ -181,11 +199,30 @@ fn function_definition(
         match_token!(tokens.next(), Token::Ident(ident) => ident, expected = "a function name");
     match_token!(tokens.next(), Token::LeftParen);
 
-    let mut params = Vec::new();
+    let mut params = FunctionParams::default();
+    let mut tail = None;
     loop {
-        if_token!(tokens.peek(), &Token::RightParen, {
+        if_token!(tokens.peek(), Token::RightParen, {
             let _ = tokens.next();
             break;
+        });
+
+        // Special handling for tail param
+        if_token!(tokens.peek(), Token::Star, {
+            let _ = tokens.next();
+            let tail_name = match_token!(tokens.next(), Token::Ident(ident) => ident, expected = "a tail parameter name");
+
+            if tail.is_some() {
+                return Err(ParserError::MultipleTailParams { function: name });
+            }
+
+            tail = Some(tail_name);
+
+            if_token!(tokens.peek(), Token::Comma, {
+                let _ = tokens.next();
+            });
+
+            continue;
         });
 
         let param_name = match_token!(tokens.next(), Token::Ident(ident) => ident, expected = "a parameter name");
@@ -204,23 +241,28 @@ fn function_definition(
 
                 Some(value)
             }
-            Token::Comma => {
-                let _ = tokens.next();
-                None
-            }
-            Token::RightParen => None,
+            Token::Comma | Token::RightParen => None,
             token => {
-                return Err(ParserError::UnexpectedToken(TokenWithMeta {
-                    token: token.clone(),
-                    meta: *meta,
-                }));
+                return Err(ParserError::UnexpectedToken {
+                    token: TokenWithMeta {
+                        token: token.clone(),
+                        meta: *meta,
+                    },
+                    expected: "one of '=', ',', ')'",
+                });
             }
         };
 
-        params.push(FunctionParam {
-            name: param_name.to_owned(),
-            default,
+        params = params.with_param(param_name, default);
+
+        // Discard trailing comma
+        if_token!(tokens.peek(), Token::Comma, {
+            let _ = tokens.next();
         });
+    }
+
+    if let Some(tail) = tail {
+        params = params.with_tail(tail);
     }
 
     let code = block(tokens)?;
@@ -288,10 +330,13 @@ fn function_call(
             }
             Token::RightParen => {}
             token => {
-                return Err(ParserError::UnexpectedToken(TokenWithMeta {
-                    token: token.clone(),
-                    meta: *meta,
-                }));
+                return Err(ParserError::UnexpectedToken {
+                    token: TokenWithMeta {
+                        token: token.clone(),
+                        meta: *meta,
+                    },
+                    expected: "one of ',', ')'",
+                });
             }
         }
     }
@@ -432,7 +477,15 @@ fn primary(
 
                 expression
             }
-            _ => return Err(ParserError::UnexpectedToken(TokenWithMeta { token, meta })),
+            _ => {
+                return Err(ParserError::UnexpectedToken {
+                    token: TokenWithMeta {
+                        token: token.clone(),
+                        meta,
+                    },
+                    expected: "a token for primary expression",
+                });
+            }
         }
     };
 
@@ -502,6 +555,11 @@ fn token_to_operator(token: TokenWithMeta) -> Result<Operator, ParserError> {
         Token::Star => Operator::Mul,
         Token::Slash => Operator::Div,
         Token::Caret => Operator::Power,
-        _ => return Err(ParserError::UnexpectedToken(token)),
+        _ => {
+            return Err(ParserError::UnexpectedToken {
+                token,
+                expected: "an operator sign",
+            });
+        }
     })
 }

@@ -1,14 +1,15 @@
+use crate::element::common::CONTENT_PARAM;
 use crate::element::kool::Error;
 
 use crate::{
     KoolElement,
     element::{
         BuildContext, Element,
-        common::{KEY_VAR, key_function_param},
+        common::{KEY_PARAM, element_base_params},
     },
     elemental::ElementalMessage,
     get_var_or_elem_error,
-    language::{Environment, Function, FunctionCode, TAIL_VAR, Value},
+    language::{Environment, Function, FunctionCode, Value},
     style::{StyleKey, WithStyle, WithStyleKey},
 };
 
@@ -37,12 +38,9 @@ impl<'a> Element<'a> for Container {
     fn kool_function() -> (&'static str, Function) {
         const NAME: &str = "Container";
 
-        let params = vec![key_function_param()];
-
         let function = |environment: &mut Environment| -> Value {
-            let key = get_var_or_elem_error!(KEY_VAR, environment, Value::String(key) => key);
-            let content =
-                get_var_or_elem_error!(TAIL_VAR, environment, Value::Element(element) => element);
+            let key = get_var_or_elem_error!(KEY_PARAM, environment, Value::String(key) => key);
+            let content = get_var_or_elem_error!(CONTENT_PARAM, environment, Value::Element(element) => element);
 
             Value::Element(Box::new(KoolElement::Container(Self { key, content })))
         };
@@ -50,7 +48,7 @@ impl<'a> Element<'a> for Container {
         (
             NAME,
             Function {
-                params,
+                params: element_base_params(),
                 code: FunctionCode::new_host(function),
             },
         )

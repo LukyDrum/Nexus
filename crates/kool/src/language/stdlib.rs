@@ -1,14 +1,16 @@
-use crate::language::{Environment, Function, FunctionCode, Library, TAIL_VAR, Value};
+use crate::language::{Environment, Function, FunctionCode, FunctionParams, Library, Value};
 
 pub fn standard_library() -> Library {
     Library::from([("print", print_function())])
 }
 
 fn print_function() -> Function {
-    let params = Vec::new();
+    const TAIL_PARAM: &str = "tail";
+
+    let params = FunctionParams::default().with_tail(TAIL_PARAM);
     let print_impl = |environment: &mut Environment| -> Value {
         let null = Value::Null;
-        let tail = environment.get_variable(TAIL_VAR).unwrap_or(&null);
+        let tail = environment.get_variable(TAIL_PARAM).unwrap_or(&null);
 
         println!("{tail}");
 

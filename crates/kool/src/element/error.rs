@@ -1,6 +1,6 @@
 use crate::{
     BuildContext, Element,
-    language::{Function, FunctionCode},
+    language::{Function, FunctionCode, FunctionParams},
 };
 
 /// An element that displays an error message.
@@ -27,7 +27,7 @@ impl<'a> Element<'a> for Error {
         (
             "__Error",
             Function {
-                params: Vec::new(),
+                params: FunctionParams::default(),
                 code: FunctionCode::new_host(|_env| crate::language::Value::Null),
             },
         )

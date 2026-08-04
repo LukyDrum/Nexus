@@ -8,7 +8,7 @@ mod value;
 
 pub use environment::Environment;
 pub use expression::{EvaluationError, Expression, Operator};
-pub use function::{Function, FunctionCode, FunctionError, FunctionParam, TAIL_VAR};
+pub use function::{Function, FunctionCode, FunctionError, FunctionParams};
 pub use library::Library;
 pub use statement::{Statement, StatementBlock, StatementExecutionError};
 pub use stdlib::standard_library;
