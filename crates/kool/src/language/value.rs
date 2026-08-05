@@ -31,3 +31,9 @@ impl Display for Value {
         }
     }
 }
+
+impl Value {
+    pub fn is_null(&self) -> bool {
+        matches!(self, Value::Null)
+    }
+}
