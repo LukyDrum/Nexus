@@ -2,7 +2,7 @@ use std::{collections::HashMap, fmt::Debug, sync::Arc};
 
 use crate::language::{Environment, StatementBlock, StatementExecutionError, Value};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Function {
     pub params: FunctionParams,
     pub code: FunctionCode,
@@ -73,6 +73,13 @@ impl Debug for FunctionCode {
         }
     }
 }
+
+impl PartialEq for FunctionCode {
+    fn eq(&self, other: &Self) -> bool {
+        std::ptr::eq(self, other)
+    }
+}
+impl Eq for FunctionCode {}
 
 impl FunctionCode {
     pub fn new_host(function: impl Fn(&mut Environment) -> Value + Send + Sync + 'static) -> Self {

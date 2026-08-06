@@ -17,7 +17,7 @@ pub enum Expression {
     },
     Array(Vec<Expression>),
     FunctionCall {
-        name: String,
+        callee: Box<Expression>,
         args: HashMap<String, Expression>,
         tail: Vec<Expression>,
     },
@@ -41,6 +41,8 @@ pub enum EvaluationError {
     IllegalOperation(Expression),
     #[error("Index out of bounds, value is: {value}, but index is: {index}")]
     IndexOutOfBounds { value: Value, index: usize },
+    #[error("Only values of type function can be called: {0}")]
+    NotCallable(Value),
     #[error("Expected a positive integer, found: {0}.")]
     UnexpecteNonPositiveInteger(i64),
     #[error("Unknown variable: {0}.")]
@@ -172,10 +174,11 @@ impl Expression {
 
                 Value::Array(values)
             }
-            Expression::FunctionCall { name, args, tail } => {
-                let function = environment
-                    .get_function(name)
-                    .ok_or(EvaluationError::UnknownFunction(name.clone()))?;
+            Expression::FunctionCall { callee, args, tail } => {
+                let callee = callee.evaluate(environment)?;
+                let Value::Function(function) = callee else {
+                    return Err(EvaluationError::NotCallable(callee));
+                };
 
                 let mut call_args = function.default_args();
                 for (param, arg) in args {

@@ -10,7 +10,6 @@ pub struct Environment {
 #[derive(Clone, Debug, Default)]
 struct Scope {
     variables: HashMap<String, Value>,
-    functions: HashMap<String, Arc<Function>>,
 }
 
 impl Default for Environment {
@@ -65,25 +64,14 @@ impl Environment {
         None
     }
 
-    /// Looks up a function starting from the innermost scope outwards.
-    pub fn get_function(&self, name: &str) -> Option<Arc<Function>> {
-        for scope in self.scopes.iter().rev() {
-            if let Some(function) = scope.functions.get(name) {
-                return Some(function.clone());
-            }
-        }
-
-        None
-    }
-
     /// Sets function in the current (innermost) environment only.
-    /// Returns the previous function defined under this name.
-    pub fn define_function(&mut self, name: String, function: Function) -> Option<Arc<Function>> {
+    /// Returns the previous value defined under this name.
+    pub fn define_function(&mut self, name: String, function: Function) -> Option<Value> {
         self.scopes
             .last_mut()
             .expect("Scopes being empty should never happen")
-            .functions
-            .insert(name, Arc::new(function))
+            .variables
+            .insert(name, Value::Function(Arc::new(function)))
     }
 
     /// Converts the whole environment into a `Library`.
@@ -92,8 +80,12 @@ impl Environment {
         let functions = self
             .scopes
             .into_iter()
-            .fold(HashMap::new(), |mut lib, scope| {
-                lib.extend(scope.functions);
+            .flat_map(|scope| scope.variables.into_iter())
+            .fold(HashMap::new(), |mut lib, (name, value)| {
+                if let Value::Function(function) = value {
+                    lib.insert(name, function);
+                }
+
                 lib
             });
 
@@ -108,7 +100,10 @@ impl Environment {
             .expect("Scopes being empty should never happen");
 
         let Library { functions } = library;
+        let functions = functions
+            .into_iter()
+            .map(|(name, function)| (name, Value::Function(function)));
 
-        scope.functions.extend(functions);
+        scope.variables.extend(functions);
     }
 }

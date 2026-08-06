@@ -123,14 +123,6 @@ fn statement(
                     let name = match_token!(tokens.next(), Token::Ident(name) => name, expected = "a variable name");
                     var_assignment(tokens, name)
                 }
-                Some(TokenWithMeta {
-                    token: Token::LeftParen,
-                    ..
-                }) => {
-                    let name = match_token!(tokens.next(), Token::Ident(name) => name, expected = "a function name");
-                    function_call(tokens, name)
-                        .map(|expression| Statement::Expression { expression })
-                }
                 _ => expression(tokens).map(|expression| Statement::Expression { expression }),
             }
         }
@@ -278,10 +270,9 @@ fn function_definition(
     })
 }
 
-/// We expect the name of the function to be handed to us.
 fn function_call(
     tokens: &mut Tokens<impl Iterator<Item = TokenWithMeta>>,
-    name: String,
+    callee: Expression,
 ) -> Result<Expression, ParserError> {
     match_token!(tokens.next(), Token::LeftParen);
 
@@ -341,7 +332,11 @@ fn function_call(
         }
     }
 
-    Ok(Expression::FunctionCall { name, args, tail })
+    Ok(Expression::FunctionCall {
+        callee: Box::new(callee),
+        args,
+        tail,
+    })
 }
 
 fn expression(
@@ -461,14 +456,7 @@ fn primary(
 
         match token {
             Token::Ident(ident) if ident == NULL_KEYWORD => Expression::Value(Value::Null),
-            // Either variable or function call
-            Token::Ident(ident) => {
-                if_token!(tokens.peek(), &Token::LeftParen, {
-                    function_call(tokens, ident)?
-                } else {
-                    Expression::Variable(ident)
-                })
-            }
+            Token::Ident(ident) => Expression::Variable(ident),
             Token::Number(num) => Expression::Value(Value::Number(num)),
             Token::String(string) => Expression::Value(Value::String(string)),
             Token::LeftParen => {
@@ -489,17 +477,21 @@ fn primary(
         }
     };
 
-    while let Some(TokenWithMeta {
-        token: Token::LeftBracket,
-        ..
-    }) = tokens.peek()
-    {
-        let index = parse_indexing(tokens)?;
-        expression = Expression::Binary {
-            operator: Operator::Index,
-            left: Box::new(expression),
-            right: Box::new(index),
-        };
+    while let Some(TokenWithMeta { token, .. }) = tokens.peek() {
+        match token {
+            Token::LeftBracket => {
+                let index = parse_indexing(tokens)?;
+                expression = Expression::Binary {
+                    operator: Operator::Index,
+                    left: Box::new(expression),
+                    right: Box::new(index),
+                };
+            }
+            Token::LeftParen => {
+                expression = function_call(tokens, expression)?;
+            }
+            _ => break,
+        }
     }
 
     Ok(expression)

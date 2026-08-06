@@ -1,6 +1,6 @@
-use std::fmt::Display;
+use std::{fmt::Display, sync::Arc};
 
-use crate::KoolElement;
+use crate::{KoolElement, language::Function};
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub enum Value {
@@ -10,6 +10,7 @@ pub enum Value {
     String(String),
     Array(Vec<Value>),
     Element(Box<KoolElement>),
+    Function(Arc<Function>),
 }
 
 impl Display for Value {
@@ -28,6 +29,7 @@ impl Display for Value {
                 write!(f, "]")
             }
             Value::Element(element) => write!(f, "<{}>", element.element_type()),
+            Value::Function(functon) => write!(f, "func({:?})", &functon.params),
         }
     }
 }

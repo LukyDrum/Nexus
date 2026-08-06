@@ -35,9 +35,13 @@ impl ElementalWidget {
         style: WidgetStyle,
         mut runtime: Environment,
     ) -> Self {
-        let view_function = runtime
-            .get_function(VIEW_FUNCTION_NAME)
-            .expect("No view function found");
+        let Value::Function(view_function) = runtime
+            .get_variable(VIEW_FUNCTION_NAME)
+            .expect("No view function found")
+        else {
+            panic!("No view function found");
+        };
+        let view_function = view_function.clone();
         let root = Self::get_root(&view_function, &mut runtime);
 
         Self {
