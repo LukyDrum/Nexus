@@ -449,42 +449,46 @@ fn power(
 fn primary(
     tokens: &mut Tokens<impl Iterator<Item = TokenWithMeta>>,
 ) -> Result<Expression, ParserError> {
-    let mut expression = if let Some(TokenWithMeta {
-        token: Token::LeftBracket,
-        ..
-    }) = tokens.peek()
-    {
-        parse_array(tokens)?
-    } else {
-        let Some(TokenWithMeta { token, meta }) = tokens.next() else {
-            return Err(ParserError::UnexpectedEof {
-                expected: "anything expression like".to_owned(),
-            });
-        };
-
-        match token {
-            Token::Ident(ident) if ident == NULL_KEYWORD => Expression::Value(Value::Null),
-            Token::Ident(ident) if ident == DEF_KEYWORD => {
-                let function = function_params_and_body(tokens)?;
-                Expression::Function(function)
-            }
-            Token::Ident(ident) => Expression::Variable(ident),
-            Token::Number(num) => Expression::Value(Value::Number(num)),
-            Token::String(string) => Expression::Value(Value::new_string(string)),
-            Token::LeftParen => {
-                let expression = expression(tokens)?;
-                match_token!(tokens.next(), Token::RightParen);
-
-                expression
-            }
-            _ => {
-                return Err(ParserError::UnexpectedToken {
-                    token: TokenWithMeta {
-                        token: token.clone(),
-                        meta,
-                    },
-                    expected: "a token for primary expression",
+    let mut expression = match tokens.peek() {
+        Some(TokenWithMeta {
+            token: Token::LeftBracket,
+            ..
+        }) => parse_array(tokens)?,
+        Some(TokenWithMeta {
+            token: Token::LeftBrace,
+            ..
+        }) => parse_hash_map(tokens)?,
+        _ => {
+            let Some(TokenWithMeta { token, meta }) = tokens.next() else {
+                return Err(ParserError::UnexpectedEof {
+                    expected: "anything expression like".to_owned(),
                 });
+            };
+
+            match token {
+                Token::Ident(ident) if ident == NULL_KEYWORD => Expression::Value(Value::Null),
+                Token::Ident(ident) if ident == DEF_KEYWORD => {
+                    let function = function_params_and_body(tokens)?;
+                    Expression::Function(function)
+                }
+                Token::Ident(ident) => Expression::Variable(ident),
+                Token::Number(num) => Expression::Value(Value::Number(num)),
+                Token::String(string) => Expression::Value(Value::new_string(string)),
+                Token::LeftParen => {
+                    let expression = expression(tokens)?;
+                    match_token!(tokens.next(), Token::RightParen);
+
+                    expression
+                }
+                _ => {
+                    return Err(ParserError::UnexpectedToken {
+                        token: TokenWithMeta {
+                            token: token.clone(),
+                            meta,
+                        },
+                        expected: "a token for primary expression",
+                    });
+                }
             }
         }
     };
@@ -540,6 +544,39 @@ fn parse_array(
     })
 }
 
+fn parse_hash_map(
+    tokens: &mut Tokens<impl Iterator<Item = TokenWithMeta>>,
+) -> Result<Expression, ParserError> {
+    match_token!(tokens.next(), Token::LeftBrace);
+
+    let mut pairs = Vec::new();
+    while let Some(TokenWithMeta { token, .. }) = tokens.peek() {
+        match token {
+            // We need this branch because of empty hash maps {}
+            Token::RightBrace => {
+                tokens.next();
+                return Ok(Expression::HashMap(pairs));
+            }
+            _ => {
+                let key = expression(tokens)?;
+                match_token!(tokens.next(), Token::Colon);
+                let value = expression(tokens)?;
+
+                pairs.push((key, value));
+            }
+        }
+
+        let token = match_token!(tokens.peek(), t @ (Token::Comma | Token::RightBrace) => t, expected = "a comma or an end of hash map");
+        // Discard comma
+        if let Token::Comma = token {
+            tokens.next();
+        }
+    }
+
+    Err(ParserError::UnexpectedEof {
+        expected: "an arrays next item or an end of the array".to_owned(),
+    })
+}
 fn parse_indexing(
     tokens: &mut Tokens<impl Iterator<Item = TokenWithMeta>>,
 ) -> Result<Expression, ParserError> {

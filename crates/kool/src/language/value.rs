@@ -1,4 +1,4 @@
-use std::{fmt::Display, sync::Arc};
+use std::{collections::HashMap, fmt::Display, hash::Hash, sync::Arc};
 
 use crate::{KoolElement, language::Function};
 
@@ -13,6 +13,7 @@ pub enum Value {
     Array(Arc<Vec<Value>>),
     Element(Arc<KoolElement>),
     Function(Arc<Function>),
+    HashMap(Arc<HashMap<Value, Value>>),
 }
 
 impl Display for Value {
@@ -31,7 +32,16 @@ impl Display for Value {
                 write!(f, "]")
             }
             Value::Element(element) => write!(f, "<{}>", element.element_type()),
-            Value::Function(functon) => write!(f, "func({:?})", &functon.params),
+            Value::Function(function) => write!(f, "func({:?})", &function.params),
+            Value::HashMap(map) => {
+                write!(f, "{{")?;
+
+                for (key, value) in map.iter() {
+                    write!(f, "{key}: {value}, ")?;
+                }
+
+                write!(f, "}}")
+            }
         }
     }
 }
@@ -50,6 +60,17 @@ impl PartialEq for Value {
     }
 }
 impl Eq for Value {}
+
+impl Hash for Value {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        match self {
+            Value::Number(num) => num.hash(state),
+            Value::String(string) => string.hash(state),
+            Value::Array(values) => values.hash(state),
+            _ => core::mem::discriminant(&Self::Null).hash(state),
+        }
+    }
+}
 
 impl Value {
     pub fn is_null(&self) -> bool {
@@ -70,5 +91,9 @@ impl Value {
 
     pub fn new_function(function: Function) -> Self {
         Self::Function(Arc::new(function))
+    }
+
+    pub fn new_hash_map(map: HashMap<Value, Value>) -> Self {
+        Self::HashMap(Arc::new(map))
     }
 }

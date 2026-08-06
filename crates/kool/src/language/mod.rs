@@ -1,3 +1,8 @@
+#![expect(
+    clippy::mutable_key_type,
+    reason = "we only hash values without interior mutability"
+)]
+
 mod environment;
 mod expression;
 mod function;

@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
 use crate::{
     language::{Function, FunctionError, SharedEnvironment, Value},
@@ -25,6 +25,7 @@ pub enum Expression {
         args: HashMap<String, Expression>,
         tail: Vec<Expression>,
     },
+    HashMap(Vec<(Expression, Expression)>),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -158,6 +159,20 @@ impl Expression {
                         Value::new_array(joined)
                     }
 
+                    // HashMap operations
+                    (Value::HashMap(map), Operator::Index, key) => {
+                        map.get(&key).cloned().unwrap_or_default()
+                    }
+                    (Value::HashMap(left), Operator::Add, Value::HashMap(right)) => {
+                        let mut joined = left.clone_inner();
+                        joined.extend(
+                            right
+                                .iter()
+                                .map(|(key, value)| (key.clone(), value.clone())),
+                        );
+                        Value::new_hash_map(joined)
+                    }
+
                     // Other
                     (left, operator, right) => {
                         return Err(EvaluationError::IllegalOperation(Expression::Binary {
@@ -181,7 +196,7 @@ impl Expression {
                 let mut function = function.clone();
                 function.closure = Some(environment.clone());
 
-                Value::Function(Arc::new(function))
+                Value::new_function(function)
             }
             Expression::FunctionCall { callee, args, tail } => {
                 let callee = callee.evaluate(environment)?;
@@ -206,6 +221,16 @@ impl Expression {
                 function
                     .call(call_args)
                     .map_err(EvaluationError::function)?
+            }
+            Expression::HashMap(key_value_pairs) => {
+                let mut map = HashMap::new();
+                for (key, value) in key_value_pairs {
+                    let key = key.evaluate_or_null(environment);
+                    let value = value.evaluate_or_null(environment);
+                    map.insert(key, value);
+                }
+
+                Value::new_hash_map(map)
             }
         })
     }
