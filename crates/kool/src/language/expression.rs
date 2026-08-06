@@ -1,6 +1,6 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
-use crate::language::{Environment, FunctionError, Value};
+use crate::language::{Environment, Function, FunctionError, Value};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Expression {
@@ -16,6 +16,7 @@ pub enum Expression {
         right: Box<Expression>,
     },
     Array(Vec<Expression>),
+    Function(Function),
     FunctionCall {
         callee: Box<Expression>,
         args: HashMap<String, Expression>,
@@ -174,6 +175,7 @@ impl Expression {
 
                 Value::Array(values)
             }
+            Expression::Function(function) => Value::Function(Arc::new(function.clone())),
             Expression::FunctionCall { callee, args, tail } => {
                 let callee = callee.evaluate(environment)?;
                 let Value::Function(function) = callee else {

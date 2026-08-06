@@ -17,9 +17,7 @@ pub enum ParserError {
     DuplicateArgument(String),
     ExpectedValue,
     ExpressionEvaluation(EvaluationError),
-    MultipleTailParams {
-        function: String,
-    },
+    MultipleTailParams,
     UndeclaredVariable(String),
     UnexpectedToken {
         token: TokenWithMeta,
@@ -189,6 +187,18 @@ fn function_definition(
 
     let name =
         match_token!(tokens.next(), Token::Ident(ident) => ident, expected = "a function name");
+
+    let function = function_params_and_body(tokens)?;
+
+    Ok(Statement::VariableDeclaration {
+        variable: name.to_owned(),
+        right_side: Expression::Function(function),
+    })
+}
+
+fn function_params_and_body(
+    tokens: &mut Tokens<impl Iterator<Item = TokenWithMeta>>,
+) -> Result<Function, ParserError> {
     match_token!(tokens.next(), Token::LeftParen);
 
     let mut params = FunctionParams::default();
@@ -205,7 +215,7 @@ fn function_definition(
             let tail_name = match_token!(tokens.next(), Token::Ident(ident) => ident, expected = "a tail parameter name");
 
             if tail.is_some() {
-                return Err(ParserError::MultipleTailParams { function: name });
+                return Err(ParserError::MultipleTailParams);
             }
 
             tail = Some(tail_name);
@@ -264,10 +274,7 @@ fn function_definition(
         code: FunctionCode::Block(code),
     };
 
-    Ok(Statement::FunctionDefinition {
-        name: name.to_owned(),
-        function,
-    })
+    Ok(function)
 }
 
 fn function_call(
@@ -456,6 +463,10 @@ fn primary(
 
         match token {
             Token::Ident(ident) if ident == NULL_KEYWORD => Expression::Value(Value::Null),
+            Token::Ident(ident) if ident == DEF_KEYWORD => {
+                let function = function_params_and_body(tokens)?;
+                Expression::Function(function)
+            }
             Token::Ident(ident) => Expression::Variable(ident),
             Token::Number(num) => Expression::Value(Value::Number(num)),
             Token::String(string) => Expression::Value(Value::String(string)),

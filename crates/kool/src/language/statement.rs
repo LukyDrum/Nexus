@@ -1,4 +1,4 @@
-use crate::language::{Environment, EvaluationError, Expression, Function, Value};
+use crate::language::{Environment, EvaluationError, Expression, Value};
 
 #[derive(Clone, Debug)]
 pub enum Statement {
@@ -9,10 +9,6 @@ pub enum Statement {
     VariableAssignment {
         variable: String,
         right_side: Expression,
-    },
-    FunctionDefinition {
-        name: String,
-        function: Function,
     },
     Expression {
         expression: Expression,
@@ -61,16 +57,6 @@ impl Statement {
                     .map_err(StatementExecutionError::ExpressionEvaluation)?;
                 if environment.set_variable(variable, value).is_none() {
                     return Err(StatementExecutionError::UnknownVariable(variable.clone()));
-                }
-
-                Value::Null
-            }
-            Self::FunctionDefinition { name, function } => {
-                if environment
-                    .define_function(name.to_owned(), function.clone())
-                    .is_some()
-                {
-                    return Err(StatementExecutionError::FunctionRedefinition(name.clone()));
                 }
 
                 Value::Null

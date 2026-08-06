@@ -1,6 +1,6 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
-use crate::language::{Function, Library, Value};
+use crate::language::{Library, Value};
 
 #[derive(Clone, Debug)]
 pub struct Environment {
@@ -62,16 +62,6 @@ impl Environment {
         }
 
         None
-    }
-
-    /// Sets function in the current (innermost) environment only.
-    /// Returns the previous value defined under this name.
-    pub fn define_function(&mut self, name: String, function: Function) -> Option<Value> {
-        self.scopes
-            .last_mut()
-            .expect("Scopes being empty should never happen")
-            .variables
-            .insert(name, Value::Function(Arc::new(function)))
     }
 
     /// Converts the whole environment into a `Library`.
