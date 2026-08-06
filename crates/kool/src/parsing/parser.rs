@@ -126,7 +126,6 @@ fn statement(
                 _ => expression(tokens).map(|expression| Statement::Expression { expression }),
             }
         }
-        Token::LeftBrace => block(tokens).map(|block| Statement::Block { block }),
         _ => expression(tokens).map(|expression| Statement::Expression { expression }),
     }
 }

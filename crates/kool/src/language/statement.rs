@@ -41,7 +41,7 @@ impl Statement {
                     .evaluate(environment)
                     .map_err(StatementExecutionError::ExpressionEvaluation)?;
                 if environment
-                    .define_variable(variable.clone(), value)
+                    .define_variable(variable.clone(), value.clone())
                     .is_some()
                 {
                     return Err(StatementExecutionError::VariableRedeclaration(
@@ -49,7 +49,7 @@ impl Statement {
                     ));
                 }
 
-                Value::Null
+                value
             }
             Statement::VariableAssignment {
                 variable,
@@ -58,11 +58,11 @@ impl Statement {
                 let value = right_side
                     .evaluate(environment)
                     .map_err(StatementExecutionError::ExpressionEvaluation)?;
-                if environment.set_variable(variable, value).is_none() {
+                if environment.set_variable(variable, value.clone()).is_none() {
                     return Err(StatementExecutionError::UnknownVariable(variable.clone()));
                 }
 
-                Value::Null
+                value
             }
             Statement::Expression { expression } => expression
                 .evaluate(environment)
