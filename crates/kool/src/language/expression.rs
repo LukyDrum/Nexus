@@ -30,12 +30,25 @@ pub enum Expression {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Operator {
+    /* Math */
     Add,
     Sub,
     Mul,
     Div,
     Power,
+    /* Indexing */
     Index,
+    /* Logical */
+    And,
+    Or,
+    Not,
+    /* Comparison */
+    Eq,
+    NotEq,
+    Less,
+    LessEq,
+    Greater,
+    GreaterEq,
 }
 
 #[derive(Clone, Debug, thiserror::Error)]
@@ -72,6 +85,7 @@ impl Expression {
                 let value = operand.evaluate(environment)?;
                 match (operator, value) {
                     (Operator::Sub, Value::Number(number)) => Value::Number(-number),
+                    (Operator::Not, value) => Value::Bool(!value.is_truthy()),
 
                     // Other
                     (operator, value) => {
@@ -88,6 +102,26 @@ impl Expression {
                 right,
             } => {
                 let left = left.evaluate(environment)?;
+
+                // Short-circuit logical operators
+                match operator {
+                    Operator::And => {
+                        if !left.is_truthy() {
+                            return Ok(Value::Bool(false));
+                        }
+                        let right_val = right.evaluate(environment)?;
+                        return Ok(Value::Bool(right_val.is_truthy()));
+                    }
+                    Operator::Or => {
+                        if left.is_truthy() {
+                            return Ok(Value::Bool(true));
+                        }
+                        let right_val = right.evaluate(environment)?;
+                        return Ok(Value::Bool(right_val.is_truthy()));
+                    }
+                    _ => {}
+                }
+
                 let right = right.evaluate(environment)?;
 
                 match (left, operator, right) {
@@ -171,6 +205,22 @@ impl Expression {
                                 .map(|(key, value)| (key.clone(), value.clone())),
                         );
                         Value::new_hash_map(joined)
+                    }
+
+                    // Comparisons
+                    (left, Operator::Eq, right) => Value::Bool(left == right),
+                    (left, Operator::NotEq, right) => Value::Bool(left != right),
+                    (Value::Number(left), Operator::Less, Value::Number(right)) => {
+                        Value::Bool(left < right)
+                    }
+                    (Value::Number(left), Operator::LessEq, Value::Number(right)) => {
+                        Value::Bool(left <= right)
+                    }
+                    (Value::Number(left), Operator::Greater, Value::Number(right)) => {
+                        Value::Bool(left > right)
+                    }
+                    (Value::Number(left), Operator::GreaterEq, Value::Number(right)) => {
+                        Value::Bool(left >= right)
                     }
 
                     // Other

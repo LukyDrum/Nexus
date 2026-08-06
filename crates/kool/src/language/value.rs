@@ -7,6 +7,7 @@ pub enum Value {
     // Pass by value
     #[default]
     Null,
+    Bool(bool),
     Number(i64),
     // Pass by reference
     String(Arc<String>),
@@ -20,6 +21,7 @@ impl Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Value::Null => write!(f, "null"),
+            Value::Bool(bool) => write!(f, "{bool}"),
             Value::Number(number) => write!(f, "{number}"),
             Value::String(string) => write!(f, "{string}"),
             Value::Array(array) => {
@@ -50,6 +52,7 @@ impl PartialEq for Value {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Null, Self::Null) => true,
+            (Self::Bool(left), Self::Bool(right)) => left == right,
             (Self::Number(left), Self::Number(right)) => left == right,
             (Self::String(left), Self::String(right)) => left == right,
             (Self::Array(left), Self::Array(right)) => left == right,
@@ -64,6 +67,7 @@ impl Eq for Value {}
 impl Hash for Value {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         match self {
+            Value::Bool(bool) => bool.hash(state),
             Value::Number(num) => num.hash(state),
             Value::String(string) => string.hash(state),
             Value::Array(values) => values.hash(state),
@@ -75,6 +79,14 @@ impl Hash for Value {
 impl Value {
     pub fn is_null(&self) -> bool {
         matches!(self, Value::Null)
+    }
+
+    pub fn is_truthy(&self) -> bool {
+        match self {
+            Self::Null | Self::Number(0) => false,
+            Self::Bool(bool) => *bool,
+            _ => true,
+        }
     }
 
     pub fn new_string(string: String) -> Self {

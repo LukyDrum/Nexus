@@ -85,6 +85,8 @@ macro_rules! if_token {
 }
 
 const NULL_KEYWORD: &str = "null";
+const TRUE_KEYWORD: &str = "true";
+const FALSE_KEYWORD: &str = "false";
 const VAR_KEY_WORD: &str = "var";
 const DEF_KEYWORD: &str = "def";
 
@@ -350,6 +352,105 @@ fn function_call(
 fn expression(
     tokens: &mut Tokens<impl Iterator<Item = TokenWithMeta>>,
 ) -> Result<Expression, ParserError> {
+    logical_or(tokens)
+}
+
+fn logical_or(
+    tokens: &mut Tokens<impl Iterator<Item = TokenWithMeta>>,
+) -> Result<Expression, ParserError> {
+    let mut left = logical_and(tokens)?;
+
+    while tokens
+        .peek()
+        .is_some_and(|TokenWithMeta { token, .. }| matches!(token, Token::Or))
+    {
+        let Some(token) = tokens.next() else { break };
+        let operator = token_to_operator(token)?;
+        let right = logical_and(tokens)?;
+
+        left = Expression::Binary {
+            left: Box::new(left),
+            right: Box::new(right),
+            operator,
+        };
+    }
+
+    Ok(left)
+}
+
+fn logical_and(
+    tokens: &mut Tokens<impl Iterator<Item = TokenWithMeta>>,
+) -> Result<Expression, ParserError> {
+    let mut left = equality(tokens)?;
+
+    while tokens
+        .peek()
+        .is_some_and(|TokenWithMeta { token, .. }| matches!(token, Token::And))
+    {
+        let Some(token) = tokens.next() else { break };
+        let operator = token_to_operator(token)?;
+        let right = equality(tokens)?;
+
+        left = Expression::Binary {
+            left: Box::new(left),
+            right: Box::new(right),
+            operator,
+        };
+    }
+
+    Ok(left)
+}
+
+fn equality(
+    tokens: &mut Tokens<impl Iterator<Item = TokenWithMeta>>,
+) -> Result<Expression, ParserError> {
+    let mut left = comparison(tokens)?;
+
+    while tokens.peek().is_some_and(|TokenWithMeta { token, .. }| {
+        matches!(token, Token::EqualEqual | Token::BangEqual)
+    }) {
+        let Some(token) = tokens.next() else { break };
+        let operator = token_to_operator(token)?;
+        let right = comparison(tokens)?;
+
+        left = Expression::Binary {
+            left: Box::new(left),
+            right: Box::new(right),
+            operator,
+        };
+    }
+
+    Ok(left)
+}
+
+fn comparison(
+    tokens: &mut Tokens<impl Iterator<Item = TokenWithMeta>>,
+) -> Result<Expression, ParserError> {
+    let mut left = addition(tokens)?;
+
+    while tokens.peek().is_some_and(|TokenWithMeta { token, .. }| {
+        matches!(
+            token,
+            Token::Less | Token::LessEqual | Token::Greater | Token::GreaterEqual
+        )
+    }) {
+        let Some(token) = tokens.next() else { break };
+        let operator = token_to_operator(token)?;
+        let right = addition(tokens)?;
+
+        left = Expression::Binary {
+            left: Box::new(left),
+            right: Box::new(right),
+            operator,
+        };
+    }
+
+    Ok(left)
+}
+
+fn addition(
+    tokens: &mut Tokens<impl Iterator<Item = TokenWithMeta>>,
+) -> Result<Expression, ParserError> {
     let mut left = term(tokens)?;
 
     while tokens
@@ -467,6 +568,12 @@ fn primary(
 
             match token {
                 Token::Ident(ident) if ident == NULL_KEYWORD => Expression::Value(Value::Null),
+                Token::Ident(ident) if ident == FALSE_KEYWORD => {
+                    Expression::Value(Value::Bool(false))
+                }
+                Token::Ident(ident) if ident == TRUE_KEYWORD => {
+                    Expression::Value(Value::Bool(true))
+                }
                 Token::Ident(ident) if ident == DEF_KEYWORD => {
                     let function = function_params_and_body(tokens)?;
                     Expression::Function(function)
@@ -596,6 +703,15 @@ fn token_to_operator(token: TokenWithMeta) -> Result<Operator, ParserError> {
         Token::Star => Operator::Mul,
         Token::Slash => Operator::Div,
         Token::Caret => Operator::Power,
+        Token::EqualEqual => Operator::Eq,
+        Token::BangEqual => Operator::NotEq,
+        Token::Less => Operator::Less,
+        Token::LessEqual => Operator::LessEq,
+        Token::Greater => Operator::Greater,
+        Token::GreaterEqual => Operator::GreaterEq,
+        Token::Bang => Operator::Not,
+        Token::And => Operator::And,
+        Token::Or => Operator::Or,
         _ => {
             return Err(ParserError::UnexpectedToken {
                 token,

@@ -19,6 +19,15 @@ pub enum Token {
     Slash,          // /
     Star,           // *
     Caret,          // ^
+    Bang,           // !
+    EqualEqual,     // ==
+    BangEqual,      // !=
+    Less,           // <
+    LessEqual,      // <=
+    Greater,        // >
+    GreaterEqual,   // >=
+    And,            // &&
+    Or,             // ||
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

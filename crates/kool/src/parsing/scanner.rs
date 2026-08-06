@@ -53,13 +53,54 @@ pub(super) fn scan(input: &str) -> Result<Vec<TokenWithMeta>, ScannerError> {
             '{' => Token::LeftBrace,
             '}' => Token::RightBrace,
             ':' => Token::Colon,
-            '=' => Token::Equal,
             ',' => Token::Comma,
             '+' => Token::Plus,
             '-' => Token::Minus,
             '/' => Token::Slash,
             '*' => Token::Star,
             '^' => Token::Caret,
+            '=' => {
+                if chars.next_if(|(_, c)| c.char == '=').is_some() {
+                    Token::EqualEqual
+                } else {
+                    Token::Equal
+                }
+            }
+            '!' => {
+                if chars.next_if(|(_, c)| c.char == '=').is_some() {
+                    Token::BangEqual
+                } else {
+                    Token::Bang
+                }
+            }
+            '<' => {
+                if chars.next_if(|(_, c)| c.char == '=').is_some() {
+                    Token::LessEqual
+                } else {
+                    Token::Less
+                }
+            }
+            '>' => {
+                if chars.next_if(|(_, c)| c.char == '=').is_some() {
+                    Token::GreaterEqual
+                } else {
+                    Token::Greater
+                }
+            }
+            '&' => {
+                if chars.next_if(|(_, c)| c.char == '&').is_some() {
+                    Token::And
+                } else {
+                    return Err(ScannerError::UnexpectedChar(CharWithMeta { char, meta }));
+                }
+            }
+            '|' => {
+                if chars.next_if(|(_, c)| c.char == '|').is_some() {
+                    Token::Or
+                } else {
+                    return Err(ScannerError::UnexpectedChar(CharWithMeta { char, meta }));
+                }
+            }
             quote @ ('"' | '\'') => {
                 let (string, skip) = if &input[index..index + 3] == MULTILINE_STRING_SIGN {
                     let Some(string) = scan_multiline_string(input, index) else {
