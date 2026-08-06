@@ -49,7 +49,7 @@ impl FromStr for NameValuePair {
         } else if value.chars().all(|char| char.is_ascii_digit()) {
             Value::Number(value.parse().map_err(ArgsError::Parse)?)
         } else {
-            Value::String(value.to_owned())
+            Value::new_string(value.to_owned())
         };
 
         Ok(Self {

@@ -1,6 +1,9 @@
 use std::{collections::HashMap, sync::Arc};
 
-use crate::language::{Function, FunctionError, SharedEnvironment, Value};
+use crate::{
+    language::{Function, FunctionError, SharedEnvironment, Value},
+    utils::CloneInner,
+};
 
 #[derive(Clone, Debug)]
 pub enum Expression {
@@ -115,10 +118,10 @@ impl Expression {
                             return Err(EvaluationError::UnexpecteNonPositiveInteger(times));
                         };
 
-                        Value::String(string.repeat(times))
+                        Value::new_string(string.repeat(times))
                     }
                     (Value::String(left), Operator::Add, Value::String(right)) => {
-                        Value::String(left + &right)
+                        Value::new_string(left.clone_inner() + &right)
                     }
                     (Value::String(string), Operator::Index, Value::Number(index)) => {
                         let Ok(index) = usize::try_from(index) else {
@@ -131,7 +134,7 @@ impl Expression {
                             },
                         )?;
 
-                        Value::String(sub_string.to_owned())
+                        Value::new_string(sub_string)
                     }
 
                     // Array operations
@@ -149,9 +152,10 @@ impl Expression {
                                 index,
                             })?
                     }
-                    (Value::Array(mut left), Operator::Add, Value::Array(right)) => {
-                        left.extend(right);
-                        Value::Array(left)
+                    (Value::Array(left), Operator::Add, Value::Array(right)) => {
+                        let mut joined = left.clone_inner();
+                        joined.extend(right.iter().cloned());
+                        Value::new_array(joined)
                     }
 
                     // Other
@@ -171,7 +175,7 @@ impl Expression {
                     values.push(value);
                 }
 
-                Value::Array(values)
+                Value::new_array(values)
             }
             Expression::Function(function) => {
                 let mut function = function.clone();

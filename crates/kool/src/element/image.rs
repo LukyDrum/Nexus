@@ -7,6 +7,7 @@ use crate::{
     get_var_or_elem_error,
     language::{Function, FunctionCode, SharedEnvironment, Value},
     style::{StyleKey, WithStyle, WithStyleKey},
+    utils::CloneInner,
 };
 
 #[derive(Clone, Debug)]
@@ -35,11 +36,13 @@ impl<'a> Element<'a> for Image {
         const NAME: &str = "Image";
 
         let function = |environment: &SharedEnvironment| -> Value {
-            let key = get_var_or_elem_error!(KEY_PARAM, environment, Value::String(key) => key);
+            let key = get_var_or_elem_error!(KEY_PARAM, environment, Value::String(key) => key)
+                .clone_inner();
             let file =
-                get_var_or_elem_error!(CONTENT_PARAM, environment, Value::String(file) => file);
+                get_var_or_elem_error!(CONTENT_PARAM, environment, Value::String(file) => file)
+                    .clone_inner();
 
-            Value::Element(Box::new(KoolElement::Image(Self { key, file })))
+            Value::new_element(KoolElement::Image(Self { key, file }))
         };
 
         (

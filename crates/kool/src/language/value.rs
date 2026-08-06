@@ -4,12 +4,14 @@ use crate::{KoolElement, language::Function};
 
 #[derive(Clone, Debug, Default)]
 pub enum Value {
+    // Pass by value
     #[default]
     Null,
     Number(i64),
-    String(String),
-    Array(Vec<Value>),
-    Element(Box<KoolElement>),
+    // Pass by reference
+    String(Arc<String>),
+    Array(Arc<Vec<Value>>),
+    Element(Arc<KoolElement>),
     Function(Arc<Function>),
 }
 
@@ -22,7 +24,7 @@ impl Display for Value {
             Value::Array(array) => {
                 write!(f, "[")?;
 
-                for value in array {
+                for value in array.iter() {
                     write!(f, "{value}, ")?;
                 }
 
@@ -42,7 +44,7 @@ impl PartialEq for Value {
             (Self::String(left), Self::String(right)) => left == right,
             (Self::Array(left), Self::Array(right)) => left == right,
             (Self::Element(left), Self::Element(right)) => left == right,
-            (Self::Function(l0), Self::Function(r0)) => l0 == r0,
+            (Self::Function(left), Self::Function(right)) => left == right,
             _ => false,
         }
     }
@@ -52,5 +54,21 @@ impl Eq for Value {}
 impl Value {
     pub fn is_null(&self) -> bool {
         matches!(self, Value::Null)
+    }
+
+    pub fn new_string(string: String) -> Self {
+        Self::String(Arc::new(string))
+    }
+
+    pub fn new_array(array: Vec<Value>) -> Self {
+        Self::Array(Arc::new(array))
+    }
+
+    pub fn new_element(element: KoolElement) -> Self {
+        Self::Element(Arc::new(element))
+    }
+
+    pub fn new_function(function: Function) -> Self {
+        Self::Function(Arc::new(function))
     }
 }

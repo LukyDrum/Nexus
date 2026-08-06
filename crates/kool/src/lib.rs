@@ -3,6 +3,7 @@ mod elemental;
 pub mod language;
 mod parsing;
 pub mod style;
+pub(crate) mod utils;
 mod widget;
 
 pub use element::{BuildContext, Element, KoolElement, element_library};

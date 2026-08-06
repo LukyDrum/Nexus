@@ -1,6 +1,9 @@
+use std::sync::Arc;
+
 use crate::element::common::CONTENT_PARAM;
 
 use crate::language::SharedEnvironment;
+use crate::utils::CloneInner;
 use crate::{
     KoolElement,
     element::{
@@ -16,7 +19,7 @@ use crate::{
 #[derive(Clone, Debug)]
 pub struct Container {
     pub key: String,
-    pub content: Box<KoolElement>,
+    pub content: Arc<KoolElement>,
 }
 
 impl<'a> Element<'a> for Container {
@@ -39,10 +42,11 @@ impl<'a> Element<'a> for Container {
         const NAME: &str = "Container";
 
         let function = |environment: &SharedEnvironment| -> Value {
-            let key = get_var_or_elem_error!(KEY_PARAM, environment, Value::String(key) => key);
+            let key = get_var_or_elem_error!(KEY_PARAM, environment, Value::String(key) => key)
+                .clone_inner();
             let content = get_var_or_elem_error!(CONTENT_PARAM, environment, Value::Element(element) => element);
 
-            Value::Element(Box::new(KoolElement::Container(Self { key, content })))
+            Value::new_element(KoolElement::Container(Self { key, content }))
         };
 
         (

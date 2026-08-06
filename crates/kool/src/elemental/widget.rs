@@ -16,7 +16,7 @@ pub struct ElementalWidget {
     settings: WidgetSettings,
     style: WidgetStyle,
 
-    root: KoolElement,
+    root: Arc<KoolElement>,
     runtime: SharedEnvironment,
     view_function: Arc<Function>,
     commands: Vec<RepeatingCommand>,
@@ -56,16 +56,18 @@ impl ElementalWidget {
         }
     }
 
-    fn get_root(view_function: &Function) -> KoolElement {
-        match view_function.call_with_default_args() {
-            Ok(Value::Element(element)) => *element,
+    fn get_root(view_function: &Function) -> Arc<KoolElement> {
+        let element = match view_function.call_with_default_args() {
+            Ok(Value::Element(element)) => return element,
             Ok(value) => KoolElement::Error(kool::Error::new(format!(
                 "view function returned non-element value: {value}"
             ))),
             Err(error) => KoolElement::Error(kool::Error::new(format!(
                 "view function call ended with error: {error:?}"
             ))),
-        }
+        };
+
+        Arc::new(element)
     }
 }
 
@@ -141,9 +143,9 @@ impl RepeatingCommand {
         match output {
             Ok(output) => {
                 if output.status.success() {
-                    String::from_utf8(output.stdout).map_or(Value::Null, Value::String)
+                    String::from_utf8(output.stdout).map_or(Value::Null, Value::new_string)
                 } else {
-                    String::from_utf8(output.stderr).map_or(Value::Null, Value::String)
+                    String::from_utf8(output.stderr).map_or(Value::Null, Value::new_string)
                 }
             }
             Err(_) => Value::Null,

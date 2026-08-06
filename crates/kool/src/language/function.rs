@@ -35,7 +35,7 @@ impl Function {
             let tail = if tail.len() <= 1 {
                 tail.pop().unwrap_or_default()
             } else {
-                Value::Array(tail)
+                Value::new_array(tail)
             };
 
             environment.define_variable(tail_param, tail);

@@ -470,7 +470,7 @@ fn primary(
             }
             Token::Ident(ident) => Expression::Variable(ident),
             Token::Number(num) => Expression::Value(Value::Number(num)),
-            Token::String(string) => Expression::Value(Value::String(string)),
+            Token::String(string) => Expression::Value(Value::new_string(string)),
             Token::LeftParen => {
                 let expression = expression(tokens)?;
                 match_token!(tokens.next(), Token::RightParen);
