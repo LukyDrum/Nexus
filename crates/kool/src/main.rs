@@ -26,13 +26,14 @@ fn main() {
     let mut runtime = Environment::default();
     runtime.import(standard_library());
     runtime.import(element_library());
+    let runtime = runtime.into_shared();
 
     for pair in args.var {
         runtime.define_variable(pair.name, pair.value);
     }
 
     let _ = kool_source
-        .execute(&mut runtime)
+        .execute(&runtime)
         .expect("Failed to execute Kool source code");
 
     let widget = ElementalWidget::new(config.name, config.settings, config.visual, runtime);

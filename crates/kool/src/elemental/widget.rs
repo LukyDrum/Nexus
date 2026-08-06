@@ -3,7 +3,7 @@ use std::{process::Command, sync::Arc, time::Duration};
 use crate::{
     KoolWidget,
     element::{BuildContext, KoolElement, kool},
-    language::{Environment, Function, Value},
+    language::{Function, SharedEnvironment, Value},
     settings::WidgetSettings,
     style::WidgetStyle,
 };
@@ -17,7 +17,7 @@ pub struct ElementalWidget {
     style: WidgetStyle,
 
     root: KoolElement,
-    runtime: Environment,
+    runtime: SharedEnvironment,
     view_function: Arc<Function>,
     commands: Vec<RepeatingCommand>,
 }
@@ -33,7 +33,7 @@ impl ElementalWidget {
         name: String,
         settings: WidgetSettings,
         style: WidgetStyle,
-        mut runtime: Environment,
+        runtime: SharedEnvironment,
     ) -> Self {
         let Value::Function(view_function) = runtime
             .get_variable(VIEW_FUNCTION_NAME)
@@ -42,7 +42,7 @@ impl ElementalWidget {
             panic!("No view function found");
         };
         let view_function = view_function.clone();
-        let root = Self::get_root(&view_function, &mut runtime);
+        let root = Self::get_root(&view_function);
 
         Self {
             name,
@@ -56,8 +56,8 @@ impl ElementalWidget {
         }
     }
 
-    fn get_root(view_function: &Function, environment: &mut Environment) -> KoolElement {
-        match view_function.call_with_default_args(environment) {
+    fn get_root(view_function: &Function) -> KoolElement {
+        match view_function.call_with_default_args() {
             Ok(Value::Element(element)) => *element,
             Ok(value) => KoolElement::Error(kool::Error::new(format!(
                 "view function returned non-element value: {value}"
@@ -79,7 +79,7 @@ impl KoolWidget<ElementalMessage> for ElementalWidget {
     }
 
     fn update(&mut self, message: ElementalMessage) -> iced::Task<ElementalMessage> {
-        self.root = Self::get_root(&self.view_function, &mut self.runtime);
+        self.root = Self::get_root(&self.view_function);
 
         match message {
             ElementalMessage::Empty => iced::Task::none(),

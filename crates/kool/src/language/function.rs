@@ -1,11 +1,14 @@
 use std::{collections::HashMap, fmt::Debug, sync::Arc};
 
-use crate::language::{Environment, StatementBlock, StatementExecutionError, Value};
+use crate::language::{
+    Environment, SharedEnvironment, StatementBlock, StatementExecutionError, Value,
+};
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct Function {
     pub params: FunctionParams,
     pub code: FunctionCode,
+    pub closure: Option<SharedEnvironment>,
 }
 
 impl Function {
@@ -18,15 +21,10 @@ impl Function {
         }
     }
 
-    pub fn call(
-        &self,
-        args: FunctionCallArgs,
-        environment: &mut Environment,
-    ) -> Result<Value, FunctionError> {
+    pub fn call(&self, args: FunctionCallArgs) -> Result<Value, FunctionError> {
         let FunctionCallArgs { args, tail } = args;
 
-        // Prepare functions environment
-        environment.push_scope();
+        let mut environment = Environment::new(self.closure.clone());
 
         for (arg, value) in args {
             environment.define_variable(arg, value);
@@ -44,25 +42,27 @@ impl Function {
         }
 
         // Execute functions code in the newly created environment
-        let return_value = self.code.execute(environment);
+        let environment = environment.into_shared();
 
-        environment.pop_scope();
-
-        return_value
+        self.code.execute(&environment)
     }
 
-    pub fn call_with_default_args(
-        &self,
-        environment: &mut Environment,
-    ) -> Result<Value, FunctionError> {
-        self.call(self.default_args(), environment)
+    pub fn call_with_default_args(&self) -> Result<Value, FunctionError> {
+        self.call(self.default_args())
     }
 }
+
+impl PartialEq for Function {
+    fn eq(&self, other: &Self) -> bool {
+        std::ptr::eq(self, other)
+    }
+}
+impl Eq for Function {}
 
 #[derive(Clone)]
 pub enum FunctionCode {
     Block(StatementBlock),
-    Host(Arc<dyn Fn(&mut Environment) -> Value + Send + Sync>),
+    Host(Arc<dyn Fn(&SharedEnvironment) -> Value + Send + Sync>),
 }
 
 impl Debug for FunctionCode {
@@ -74,19 +74,14 @@ impl Debug for FunctionCode {
     }
 }
 
-impl PartialEq for FunctionCode {
-    fn eq(&self, other: &Self) -> bool {
-        std::ptr::eq(self, other)
-    }
-}
-impl Eq for FunctionCode {}
-
 impl FunctionCode {
-    pub fn new_host(function: impl Fn(&mut Environment) -> Value + Send + Sync + 'static) -> Self {
+    pub fn new_host(
+        function: impl Fn(&SharedEnvironment) -> Value + Send + Sync + 'static,
+    ) -> Self {
         Self::Host(Arc::new(function))
     }
 
-    pub fn execute(&self, environment: &mut Environment) -> Result<Value, FunctionError> {
+    pub fn execute(&self, environment: &SharedEnvironment) -> Result<Value, FunctionError> {
         match self {
             Self::Block(block) => block.execute(environment).map_err(FunctionError::Execution),
             Self::Host(function) => Ok(function(environment)),

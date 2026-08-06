@@ -1,64 +1,82 @@
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+};
 
 use crate::language::{Library, Value};
 
-#[derive(Clone, Debug)]
-pub struct Environment {
-    scopes: Vec<Scope>,
+#[derive(Clone, Debug, Default)]
+pub struct SharedEnvironment {
+    inner: Arc<RwLock<Environment>>,
+}
+
+impl SharedEnvironment {
+    pub fn get_variable(&self, name: &str) -> Option<Value> {
+        self.inner.read().expect("Lock poisoned").get_variable(name)
+    }
+
+    pub fn define_variable(&self, name: String, value: Value) -> Option<Value> {
+        self.inner
+            .write()
+            .expect("Lock poisoned")
+            .define_variable(name, value)
+    }
+
+    pub fn set_variable(&self, name: &str, value: Value) -> Option<Value> {
+        self.inner
+            .write()
+            .expect("Lock poisoned")
+            .set_variable(name, value)
+    }
 }
 
 #[derive(Clone, Debug, Default)]
-struct Scope {
+pub struct Environment {
+    outer: Option<SharedEnvironment>,
     variables: HashMap<String, Value>,
 }
 
-impl Default for Environment {
-    fn default() -> Self {
+impl Environment {
+    pub fn new(outer: Option<SharedEnvironment>) -> Self {
         Self {
-            scopes: vec![Scope::default()],
+            outer,
+            ..Default::default()
         }
     }
-}
 
-impl Environment {
-    /// Pushes a new scope onto the stack.
-    pub fn push_scope(&mut self) {
-        self.scopes.push(Scope::default());
+    pub fn into_shared(self) -> SharedEnvironment {
+        SharedEnvironment {
+            inner: Arc::new(RwLock::new(self)),
+        }
     }
 
-    /// Pops the top scope off the stack.
-    pub fn pop_scope(&mut self) {
-        self.scopes.pop();
-    }
+    /// Looks up and returns a variable.
+    pub fn get_variable(&self, name: &str) -> Option<Value> {
+        if let Some(value) = self.variables.get(name).cloned() {
+            return Some(value);
+        }
 
-    /// Looks up a variable starting from the innermost scope.
-    pub fn get_variable(&self, name: &str) -> Option<&Value> {
-        for scope in self.scopes.iter().rev() {
-            if let Some(value) = scope.variables.get(name) {
-                return Some(value);
-            }
+        if let Some(outer) = &self.outer {
+            return outer.get_variable(name);
         }
 
         None
     }
 
-    /// Sets a variable in the current (innermost) environment only.
-    /// Returns the previous value of this variable.
+    /// Defines a variable and returns its previous value for error handling purposes.
     pub fn define_variable(&mut self, name: String, value: Value) -> Option<Value> {
-        self.scopes
-            .last_mut()
-            .expect("Scopes being empty should never happen")
-            .variables
-            .insert(name, value)
+        self.variables.insert(name, value)
     }
 
-    /// Looks up the variable in any scope, sets it to a new value, and returns a reference to its value.
-    pub fn set_variable(&mut self, name: &str, value: Value) -> Option<&Value> {
-        for scope in self.scopes.iter_mut().rev() {
-            if let Some(variable) = scope.variables.get_mut(name) {
-                *variable = value;
-                return Some(variable);
-            }
+    /// Looks up a variable by its name in this or some of its enclosing environments and sets its value.
+    /// Returns the old value of the variable.
+    pub fn set_variable(&mut self, name: &str, value: Value) -> Option<Value> {
+        if self.variables.contains_key(name) {
+            return self.variables.insert(name.to_owned(), value);
+        }
+
+        if let Some(outer) = &self.outer {
+            return outer.set_variable(name, value);
         }
 
         None
@@ -67,33 +85,27 @@ impl Environment {
     /// Converts the whole environment into a `Library`.
     /// Libraries contain only functions.
     pub fn into_library(self) -> Library {
-        let functions = self
-            .scopes
-            .into_iter()
-            .flat_map(|scope| scope.variables.into_iter())
-            .fold(HashMap::new(), |mut lib, (name, value)| {
-                if let Value::Function(function) = value {
-                    lib.insert(name, function);
-                }
+        let functions =
+            self.variables
+                .into_iter()
+                .fold(HashMap::new(), |mut lib, (name, value)| {
+                    if let Value::Function(function) = value {
+                        lib.insert(name, function);
+                    }
 
-                lib
-            });
+                    lib
+                });
 
         Library { functions }
     }
 
     /// Imports `library` into the inner most scope.
     pub fn import(&mut self, library: Library) {
-        let scope = self
-            .scopes
-            .last_mut()
-            .expect("Scopes being empty should never happen");
-
         let Library { functions } = library;
         let functions = functions
             .into_iter()
             .map(|(name, function)| (name, Value::Function(function)));
 
-        scope.variables.extend(functions);
+        self.variables.extend(functions);
     }
 }

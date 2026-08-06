@@ -272,6 +272,7 @@ fn function_params_and_body(
     let function = Function {
         params,
         code: FunctionCode::Block(code),
+        closure: None,
     };
 
     Ok(function)

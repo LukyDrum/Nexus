@@ -3,10 +3,9 @@ use crate::{
     element::{
         BuildContext, Element,
         common::{CONTENT_PARAM, KEY_PARAM, element_base_params},
-        kool::Error,
     },
     get_var_or_elem_error,
-    language::{Environment, Function, FunctionCode, Value},
+    language::{Function, FunctionCode, SharedEnvironment, Value},
     style::{StyleKey, WithStyle, WithStyleKey},
 };
 
@@ -35,7 +34,7 @@ impl<'a> Element<'a> for Image {
     fn kool_function() -> (&'static str, Function) {
         const NAME: &str = "Image";
 
-        let function = |environment: &mut Environment| -> Value {
+        let function = |environment: &SharedEnvironment| -> Value {
             let key = get_var_or_elem_error!(KEY_PARAM, environment, Value::String(key) => key);
             let file =
                 get_var_or_elem_error!(CONTENT_PARAM, environment, Value::String(file) => file);
@@ -48,6 +47,7 @@ impl<'a> Element<'a> for Image {
             Function {
                 params: element_base_params(),
                 code: FunctionCode::new_host(function),
+                closure: None,
             },
         )
     }

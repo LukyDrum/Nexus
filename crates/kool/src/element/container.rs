@@ -1,6 +1,6 @@
 use crate::element::common::CONTENT_PARAM;
-use crate::element::kool::Error;
 
+use crate::language::SharedEnvironment;
 use crate::{
     KoolElement,
     element::{
@@ -9,7 +9,7 @@ use crate::{
     },
     elemental::ElementalMessage,
     get_var_or_elem_error,
-    language::{Environment, Function, FunctionCode, Value},
+    language::{Function, FunctionCode, Value},
     style::{StyleKey, WithStyle, WithStyleKey},
 };
 
@@ -38,7 +38,7 @@ impl<'a> Element<'a> for Container {
     fn kool_function() -> (&'static str, Function) {
         const NAME: &str = "Container";
 
-        let function = |environment: &mut Environment| -> Value {
+        let function = |environment: &SharedEnvironment| -> Value {
             let key = get_var_or_elem_error!(KEY_PARAM, environment, Value::String(key) => key);
             let content = get_var_or_elem_error!(CONTENT_PARAM, environment, Value::Element(element) => element);
 
@@ -50,6 +50,7 @@ impl<'a> Element<'a> for Container {
             Function {
                 params: element_base_params(),
                 code: FunctionCode::new_host(function),
+                closure: None,
             },
         )
     }

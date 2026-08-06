@@ -1,5 +1,5 @@
 use crate::language::{
-    Environment, Expression, Function, FunctionCode, FunctionParams, Library, Operator, Value,
+    Expression, Function, FunctionCode, FunctionParams, Library, Operator, SharedEnvironment, Value,
 };
 
 pub fn standard_library() -> Library {
@@ -10,9 +10,8 @@ fn print_function() -> Function {
     const TAIL_PARAM: &str = "tail";
 
     let params = FunctionParams::default().with_tail(TAIL_PARAM);
-    let print_impl = |environment: &mut Environment| -> Value {
-        let null = Value::Null;
-        let tail = environment.get_variable(TAIL_PARAM).unwrap_or(&null);
+    let print_impl = |environment: &SharedEnvironment| -> Value {
+        let tail = environment.get_variable(TAIL_PARAM).unwrap_or_default();
 
         println!("{tail}");
 
@@ -22,6 +21,7 @@ fn print_function() -> Function {
     Function {
         params,
         code: FunctionCode::new_host(print_impl),
+        closure: None,
     }
 }
 
@@ -33,15 +33,9 @@ fn sum_function() -> Function {
         .with_param(SEP_PARAM, None)
         .with_tail(TAIL_PARAM);
 
-    let sum_impl = |environment: &mut Environment| -> Value {
-        let sep = environment
-            .get_variable(SEP_PARAM)
-            .cloned()
-            .unwrap_or(Value::Null);
-        let tail = environment
-            .get_variable(TAIL_PARAM)
-            .cloned()
-            .unwrap_or(Value::Null);
+    let sum_impl = |environment: &SharedEnvironment| -> Value {
+        let sep = environment.get_variable(SEP_PARAM).unwrap_or(Value::Null);
+        let tail = environment.get_variable(TAIL_PARAM).unwrap_or(Value::Null);
 
         let array = match tail {
             Value::Array(array) => array,
@@ -78,5 +72,6 @@ fn sum_function() -> Function {
     Function {
         params,
         code: FunctionCode::new_host(sum_impl),
+        closure: None,
     }
 }

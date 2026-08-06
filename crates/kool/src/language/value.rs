@@ -2,7 +2,7 @@ use std::{fmt::Display, sync::Arc};
 
 use crate::{KoolElement, language::Function};
 
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default)]
 pub enum Value {
     #[default]
     Null,
@@ -33,6 +33,21 @@ impl Display for Value {
         }
     }
 }
+
+impl PartialEq for Value {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Null, Self::Null) => true,
+            (Self::Number(left), Self::Number(right)) => left == right,
+            (Self::String(left), Self::String(right)) => left == right,
+            (Self::Array(left), Self::Array(right)) => left == right,
+            (Self::Element(left), Self::Element(right)) => left == right,
+            (Self::Function(l0), Self::Function(r0)) => l0 == r0,
+            _ => false,
+        }
+    }
+}
+impl Eq for Value {}
 
 impl Value {
     pub fn is_null(&self) -> bool {

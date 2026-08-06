@@ -1,8 +1,8 @@
 use std::{collections::HashMap, sync::Arc};
 
-use crate::language::{Environment, Function, FunctionError, Value};
+use crate::language::{Function, FunctionError, SharedEnvironment, Value};
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub enum Expression {
     Value(Value),
     Variable(String),
@@ -60,12 +60,10 @@ impl EvaluationError {
 
 impl Expression {
     /// Evaluates the expression to a concrete `Value`.
-    pub fn evaluate(&self, environment: &mut Environment) -> Result<Value, EvaluationError> {
+    pub fn evaluate(&self, environment: &SharedEnvironment) -> Result<Value, EvaluationError> {
         Ok(match self {
             Expression::Value(value) => value.clone(),
-            Expression::Variable(name) => {
-                environment.get_variable(name).cloned().unwrap_or_default()
-            }
+            Expression::Variable(name) => environment.get_variable(name).unwrap_or_default(),
             Expression::Unary { operator, operand } => {
                 let value = operand.evaluate(environment)?;
                 match (operator, value) {
@@ -175,7 +173,12 @@ impl Expression {
 
                 Value::Array(values)
             }
-            Expression::Function(function) => Value::Function(Arc::new(function.clone())),
+            Expression::Function(function) => {
+                let mut function = function.clone();
+                function.closure = Some(environment.clone());
+
+                Value::Function(Arc::new(function))
+            }
             Expression::FunctionCall { callee, args, tail } => {
                 let callee = callee.evaluate(environment)?;
                 let Value::Function(function) = callee else {
@@ -197,14 +200,14 @@ impl Expression {
                 }
 
                 function
-                    .call(call_args, environment)
+                    .call(call_args)
                     .map_err(EvaluationError::function)?
             }
         })
     }
 
     /// Like `Self::evaluate` but for simplicity, any illogical/illegal operation evaluates into a `Value::Null`.
-    pub fn evaluate_or_null(&self, environment: &mut Environment) -> Value {
+    pub fn evaluate_or_null(&self, environment: &SharedEnvironment) -> Value {
         self.evaluate(environment).unwrap_or_default()
     }
 }

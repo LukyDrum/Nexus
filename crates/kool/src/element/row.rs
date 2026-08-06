@@ -7,7 +7,7 @@ use crate::{
     },
     elemental::ElementalMessage,
     get_var_or_elem_error,
-    language::{Environment, Function, FunctionCode, Value},
+    language::{Function, FunctionCode, SharedEnvironment, Value},
     style::{StyleKey, WithStyle, WithStyleKey},
 };
 
@@ -37,7 +37,7 @@ impl<'a> Element<'a> for Row {
     fn kool_function() -> (&'static str, Function) {
         const NAME: &str = "Row";
 
-        let function = |environment: &mut Environment| -> Value {
+        let function = |environment: &SharedEnvironment| -> Value {
             let key = get_var_or_elem_error!(KEY_PARAM, environment, Value::String(key) => key);
 
             let content =
@@ -60,6 +60,7 @@ impl<'a> Element<'a> for Row {
             Function {
                 params: element_base_params(),
                 code: FunctionCode::new_host(function),
+                closure: None,
             },
         )
     }

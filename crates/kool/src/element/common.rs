@@ -14,6 +14,8 @@ pub(super) fn element_base_params() -> FunctionParams {
 #[macro_export]
 macro_rules! get_var_or_elem_error {
     ($var:expr, $env:expr, $pat:pat => $value:ident) => {{
+        use $crate::element::kool::Error;
+
         let Some(var) = $env.get_variable($var) else {
             return Value::Element(Box::new(KoolElement::Error(Error::new(format!(
                 "`{}` variable not found",

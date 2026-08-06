@@ -1,4 +1,4 @@
-use crate::language::{Environment, EvaluationError, Expression, Value};
+use crate::language::{EvaluationError, Expression, SharedEnvironment, Value};
 
 #[derive(Clone, Debug)]
 pub enum Statement {
@@ -28,7 +28,10 @@ pub enum StatementExecutionError {
 
 impl Statement {
     /// Normally a statement would not return a value, but since we want have implicit returns than this change comes in handy.
-    pub fn execute(&self, environment: &mut Environment) -> Result<Value, StatementExecutionError> {
+    pub fn execute(
+        &self,
+        environment: &SharedEnvironment,
+    ) -> Result<Value, StatementExecutionError> {
         let value = match self {
             Self::VariableDeclaration {
                 variable,
@@ -78,7 +81,10 @@ pub struct StatementBlock {
 }
 
 impl StatementBlock {
-    pub fn execute(&self, environment: &mut Environment) -> Result<Value, StatementExecutionError> {
+    pub fn execute(
+        &self,
+        environment: &SharedEnvironment,
+    ) -> Result<Value, StatementExecutionError> {
         let mut return_value = Value::Null;
         for statement in &self.statements {
             return_value = statement.execute(environment)?;

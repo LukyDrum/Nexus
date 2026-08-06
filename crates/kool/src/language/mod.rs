@@ -6,7 +6,7 @@ mod statement;
 mod stdlib;
 mod value;
 
-pub use environment::Environment;
+pub use environment::{Environment, SharedEnvironment};
 pub use expression::{EvaluationError, Expression, Operator};
 pub use function::{Function, FunctionCode, FunctionError, FunctionParams};
 pub use library::Library;
