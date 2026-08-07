@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 
 use crate::{
-    language::{Function, FunctionError, SharedEnvironment, Value},
+    language::{
+        Function, FunctionError, SharedEnvironment, StatementBlock, StatementExecutionError, Value,
+    },
     utils::CloneInner,
 };
 
@@ -26,6 +28,11 @@ pub enum Expression {
         tail: Vec<Expression>,
     },
     HashMap(Vec<(Expression, Expression)>),
+    IfElse {
+        condition: Box<Expression>,
+        then_branch: StatementBlock,
+        else_branch: Option<StatementBlock>,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -61,6 +68,8 @@ pub enum EvaluationError {
     IndexOutOfBounds { value: Value, index: usize },
     #[error("Only values of type function can be called: {0}")]
     NotCallable(Value),
+    #[error("Failed to execute block: {0:?}")]
+    BlockExecution(Box<StatementExecutionError>),
     #[error("Expected a positive integer, found: {0}.")]
     UnexpecteNonPositiveInteger(i64),
     #[error("Unknown variable: {0}.")]
@@ -281,6 +290,26 @@ impl Expression {
                 }
 
                 Value::new_hash_map(map)
+            }
+            Expression::IfElse {
+                condition,
+                then_branch,
+                else_branch,
+            } => {
+                let condition = condition.evaluate(environment)?;
+                if condition.is_truthy() {
+                    then_branch
+                        .execute(environment)
+                        .map_err(|err| EvaluationError::BlockExecution(Box::new(err)))?
+                } else {
+                    if let Some(else_branch) = else_branch {
+                        else_branch
+                            .execute(environment)
+                            .map_err(|err| EvaluationError::BlockExecution(Box::new(err)))?
+                    } else {
+                        Value::Null
+                    }
+                }
             }
         })
     }

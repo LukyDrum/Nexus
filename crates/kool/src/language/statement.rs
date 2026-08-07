@@ -13,9 +13,6 @@ pub enum Statement {
     Expression {
         expression: Expression,
     },
-    Block {
-        block: StatementBlock,
-    },
 }
 
 #[derive(Clone, Debug)]
@@ -67,7 +64,6 @@ impl Statement {
             Statement::Expression { expression } => expression
                 .evaluate(environment)
                 .map_err(StatementExecutionError::ExpressionEvaluation)?,
-            Statement::Block { block } => block.execute(environment)?,
         };
 
         Ok(value)

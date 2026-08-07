@@ -89,6 +89,8 @@ const TRUE_KEYWORD: &str = "true";
 const FALSE_KEYWORD: &str = "false";
 const VAR_KEY_WORD: &str = "var";
 const DEF_KEYWORD: &str = "def";
+const IF_KEYWORD: &str = "if";
+const ELSE_KEYWORD: &str = "else";
 
 pub fn parse(tokens: impl Iterator<Item = TokenWithMeta>) -> Result<StatementBlock, ParserError> {
     let mut tokens = MultiPeekable::new(tokens);
@@ -558,6 +560,10 @@ fn primary(
             token: Token::LeftBrace,
             ..
         }) => parse_hash_map(tokens)?,
+        Some(TokenWithMeta {
+            token: Token::Ident(ident),
+            ..
+        }) if ident == IF_KEYWORD => if_else(tokens)?,
         _ => {
             let Some(TokenWithMeta { token, meta }) = tokens.next() else {
                 return Err(ParserError::UnexpectedEof {
@@ -619,6 +625,32 @@ fn primary(
     Ok(expression)
 }
 
+fn if_else(
+    tokens: &mut Tokens<impl Iterator<Item = TokenWithMeta>>,
+) -> Result<Expression, ParserError> {
+    match_token!(tokens.next(), Token::Ident(keyword) => keyword, expected = "if keyword");
+
+    let condition = expression(tokens)?;
+    let then_branch = block(tokens)?;
+    let else_branch = if let Some(TokenWithMeta {
+        token: Token::Ident(keyword),
+        ..
+    }) = tokens.peek()
+        && keyword == ELSE_KEYWORD
+    {
+        match_token!(tokens.next(), Token::Ident(keyword) => keyword, expected = "else keyword");
+        Some(block(tokens)?)
+    } else {
+        None
+    };
+
+    Ok(Expression::IfElse {
+        condition: Box::new(condition),
+        then_branch,
+        else_branch,
+    })
+}
+
 fn parse_array(
     tokens: &mut Tokens<impl Iterator<Item = TokenWithMeta>>,
 ) -> Result<Expression, ParserError> {
@@ -655,6 +687,9 @@ fn parse_hash_map(
 ) -> Result<Expression, ParserError> {
     match_token!(tokens.next(), Token::LeftBrace);
 
+    dbg!("parsing hash map");
+    dbg!(tokens.peek());
+
     let mut pairs = Vec::new();
     while let Some(TokenWithMeta { token, .. }) = tokens.peek() {
         match token {
@@ -683,6 +718,7 @@ fn parse_hash_map(
         expected: "an arrays next item or an end of the array".to_owned(),
     })
 }
+
 fn parse_indexing(
     tokens: &mut Tokens<impl Iterator<Item = TokenWithMeta>>,
 ) -> Result<Expression, ParserError> {
