@@ -8,7 +8,7 @@ pub enum Value {
     #[default]
     Null,
     Bool(bool),
-    Number(i64),
+    Int(i64),
     // Pass by reference
     String(Arc<String>),
     Array(Arc<Vec<Value>>),
@@ -22,7 +22,7 @@ impl Display for Value {
         match self {
             Value::Null => write!(f, "null"),
             Value::Bool(bool) => write!(f, "{bool}"),
-            Value::Number(number) => write!(f, "{number}"),
+            Value::Int(int) => write!(f, "{int}"),
             Value::String(string) => write!(f, "{string}"),
             Value::Array(array) => {
                 write!(f, "[")?;
@@ -53,7 +53,7 @@ impl PartialEq for Value {
         match (self, other) {
             (Self::Null, Self::Null) => true,
             (Self::Bool(left), Self::Bool(right)) => left == right,
-            (Self::Number(left), Self::Number(right)) => left == right,
+            (Self::Int(left), Self::Int(right)) => left == right,
             (Self::String(left), Self::String(right)) => left == right,
             (Self::Array(left), Self::Array(right)) => left == right,
             (Self::Element(left), Self::Element(right)) => left == right,
@@ -68,7 +68,7 @@ impl Hash for Value {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         match self {
             Value::Bool(bool) => bool.hash(state),
-            Value::Number(num) => num.hash(state),
+            Value::Int(int) => int.hash(state),
             Value::String(string) => string.hash(state),
             Value::Array(values) => values.hash(state),
             _ => core::mem::discriminant(&Self::Null).hash(state),
@@ -83,7 +83,7 @@ impl Value {
 
     pub fn is_truthy(&self) -> bool {
         match self {
-            Self::Null | Self::Number(0) => false,
+            Self::Null | Self::Int(0) => false,
             Self::Bool(bool) => *bool,
             _ => true,
         }

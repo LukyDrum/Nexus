@@ -93,7 +93,7 @@ impl Expression {
             Expression::Unary { operator, operand } => {
                 let value = operand.evaluate(environment)?;
                 match (operator, value) {
-                    (Operator::Sub, Value::Number(number)) => Value::Number(-number),
+                    (Operator::Sub, Value::Int(number)) => Value::Int(-number),
                     (Operator::Not, value) => Value::Bool(!value.is_truthy()),
 
                     // Other
@@ -135,29 +135,29 @@ impl Expression {
 
                 match (left, operator, right) {
                     // Number math
-                    (Value::Number(left), Operator::Add, Value::Number(right)) => {
-                        Value::Number(left + right)
+                    (Value::Int(left), Operator::Add, Value::Int(right)) => {
+                        Value::Int(left + right)
                     }
-                    (Value::Number(left), Operator::Sub, Value::Number(right)) => {
-                        Value::Number(left - right)
+                    (Value::Int(left), Operator::Sub, Value::Int(right)) => {
+                        Value::Int(left - right)
                     }
-                    (Value::Number(left), Operator::Mul, Value::Number(right)) => {
-                        Value::Number(left * right)
+                    (Value::Int(left), Operator::Mul, Value::Int(right)) => {
+                        Value::Int(left * right)
                     }
-                    (Value::Number(left), Operator::Div, Value::Number(right)) => {
-                        Value::Number(left / right)
+                    (Value::Int(left), Operator::Div, Value::Int(right)) => {
+                        Value::Int(left / right)
                     }
-                    (Value::Number(left), Operator::Power, Value::Number(right)) => {
+                    (Value::Int(left), Operator::Power, Value::Int(right)) => {
                         let Ok(right) = u32::try_from(right) else {
                             return Err(EvaluationError::UnexpecteNonPositiveInteger(right));
                         };
 
-                        Value::Number(left.pow(right))
+                        Value::Int(left.pow(right))
                     }
 
                     // String operations
-                    (Value::Number(times), Operator::Mul, Value::String(string))
-                    | (Value::String(string), Operator::Mul, Value::Number(times)) => {
+                    (Value::Int(times), Operator::Mul, Value::String(string))
+                    | (Value::String(string), Operator::Mul, Value::Int(times)) => {
                         let Ok(times) = usize::try_from(times) else {
                             return Err(EvaluationError::UnexpecteNonPositiveInteger(times));
                         };
@@ -167,7 +167,7 @@ impl Expression {
                     (Value::String(left), Operator::Add, Value::String(right)) => {
                         Value::new_string(left.clone_inner() + &right)
                     }
-                    (Value::String(string), Operator::Index, Value::Number(index)) => {
+                    (Value::String(string), Operator::Index, Value::Int(index)) => {
                         let Ok(index) = usize::try_from(index) else {
                             return Err(EvaluationError::UnexpecteNonPositiveInteger(index));
                         };
@@ -183,7 +183,7 @@ impl Expression {
 
                     // Array operations
                     // TODO: Consider not evaluating the whole array and actually only taking the value we need
-                    (Value::Array(array), Operator::Index, Value::Number(index)) => {
+                    (Value::Array(array), Operator::Index, Value::Int(index)) => {
                         let Ok(index) = usize::try_from(index) else {
                             return Err(EvaluationError::UnexpecteNonPositiveInteger(index));
                         };
@@ -219,16 +219,16 @@ impl Expression {
                     // Comparisons
                     (left, Operator::Eq, right) => Value::Bool(left == right),
                     (left, Operator::NotEq, right) => Value::Bool(left != right),
-                    (Value::Number(left), Operator::Less, Value::Number(right)) => {
+                    (Value::Int(left), Operator::Less, Value::Int(right)) => {
                         Value::Bool(left < right)
                     }
-                    (Value::Number(left), Operator::LessEq, Value::Number(right)) => {
+                    (Value::Int(left), Operator::LessEq, Value::Int(right)) => {
                         Value::Bool(left <= right)
                     }
-                    (Value::Number(left), Operator::Greater, Value::Number(right)) => {
+                    (Value::Int(left), Operator::Greater, Value::Int(right)) => {
                         Value::Bool(left > right)
                     }
-                    (Value::Number(left), Operator::GreaterEq, Value::Number(right)) => {
+                    (Value::Int(left), Operator::GreaterEq, Value::Int(right)) => {
                         Value::Bool(left >= right)
                     }
 

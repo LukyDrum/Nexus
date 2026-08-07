@@ -136,11 +136,11 @@ pub(super) fn scan(input: &str) -> Result<Vec<TokenWithMeta>, ScannerError> {
                     end += 1;
                 }
 
-                let num = input[start..=end]
+                let int = input[start..=end]
                     .parse()
                     .map_err(ScannerError::NumberParse)?;
 
-                Token::Number(num)
+                Token::Int(int)
             }
             c if c.is_whitespace() => continue,
             c if is_ident_char(c) => {

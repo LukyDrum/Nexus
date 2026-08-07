@@ -584,7 +584,7 @@ fn primary(
                     Expression::Function(function)
                 }
                 Token::Ident(ident) => Expression::Variable(ident),
-                Token::Number(num) => Expression::Value(Value::Number(num)),
+                Token::Int(int) => Expression::Value(Value::Int(int)),
                 Token::String(string) => Expression::Value(Value::new_string(string)),
                 Token::LeftParen => {
                     let expression = expression(tokens)?;

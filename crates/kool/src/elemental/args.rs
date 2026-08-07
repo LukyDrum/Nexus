@@ -47,7 +47,7 @@ impl FromStr for NameValuePair {
         let value = if value.is_empty() {
             Value::Null
         } else if value.chars().all(|char| char.is_ascii_digit()) {
-            Value::Number(value.parse().map_err(ArgsError::Parse)?)
+            Value::Int(value.parse().map_err(ArgsError::Parse)?)
         } else {
             Value::new_string(value.to_owned())
         };

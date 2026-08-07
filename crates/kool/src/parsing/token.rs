@@ -4,7 +4,7 @@ use crate::parsing::Metadata;
 pub enum Token {
     Ident(String),  // eg. Text
     String(String), // eg. "Hello world"
-    Number(i64),    // eg. 42
+    Int(i64),       // eg. 42
     LeftParen,      // (
     RightParen,     // )
     LeftBracket,    // [
