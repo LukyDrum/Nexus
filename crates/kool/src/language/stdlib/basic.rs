@@ -6,7 +6,7 @@ use crate::{
     utils::CloneInner,
 };
 
-pub fn standard_library() -> Library {
+pub(super) fn basic_functions() -> Library {
     Library::from([("print", print_function()), ("sum", sum_function())])
 }
 
