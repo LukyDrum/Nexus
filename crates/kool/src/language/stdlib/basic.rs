@@ -7,7 +7,11 @@ use crate::{
 };
 
 pub(super) fn basic_functions() -> Library {
-    Library::from([("print", print_function()), ("sum", sum_function())])
+    Library::from([
+        ("print", print_function()),
+        ("sum", sum_function()),
+        ("call", call_function()),
+    ])
 }
 
 fn print_function() -> Function {
@@ -79,4 +83,62 @@ fn sum_function() -> Function {
         code: FunctionCode::new_host(sum_impl),
         closure: None,
     }
+}
+
+fn call_function() -> Function {
+    const TAIL_PARAM: &str = "tail";
+
+    let params = FunctionParams::default().with_tail(TAIL_PARAM);
+    let call_impl = |environment: &SharedEnvironment| -> Value {
+        let tail = environment.get_variable(TAIL_PARAM).unwrap_or_default();
+
+        let mut parts = match tail {
+            Value::String(command) => split_command(&command),
+            Value::Array(array) => array.iter().map(|value| value.to_string()).collect(),
+            _ => return Value::Null,
+        };
+
+        if parts.is_empty() {
+            return Value::Null;
+        }
+
+        let program = parts.remove(0);
+        let Ok(output) = std::process::Command::new(program).args(parts).output() else {
+            return Value::Null;
+        };
+        let output = String::from_utf8_lossy(&output.stdout).to_string();
+
+        Value::new_string(output)
+    };
+
+    Function {
+        params,
+        code: FunctionCode::new_host(call_impl),
+        closure: None,
+    }
+}
+
+fn split_command(command: &str) -> Vec<String> {
+    let mut start = 0;
+    let mut end = 0;
+    let mut quoted = false;
+    let mut parts = Vec::new();
+
+    for c in command.chars() {
+        if c == ' ' && !quoted {
+            parts.push(command[start..end].trim_matches(is_quote).to_owned());
+            start = end + 1;
+        } else if is_quote(c) {
+            quoted = !quoted;
+        }
+
+        end += 1;
+    }
+    parts.push(command[start..end].trim_matches(is_quote).to_owned());
+
+    parts
+}
+
+fn is_quote(c: char) -> bool {
+    c == '"' || c == '\''
 }

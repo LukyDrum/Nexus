@@ -170,13 +170,17 @@ fn scan_string(input: &str, start_index: usize, start_quote: char) -> Option<&st
         return None;
     }
 
+    let mut is_escaped = false;
     let mut end = start;
     for char in input[start..].chars() {
         match char {
-            quote if quote == start_quote => return Some(&input[start..end]),
+            '\\' => is_escaped = true,
+            quote if quote == start_quote && !is_escaped => return Some(&input[start..end]),
             '\n' => return None,
-            _ => end += 1,
+            _ => is_escaped = false,
         }
+
+        end += 1;
     }
 
     None
@@ -223,5 +227,9 @@ fn replace_consecutive_whitespace(string: &str, replacement: Option<char>) -> St
 }
 
 fn replace_escape_chars(string: &str) -> String {
-    string.replace("\\n", "\n")
+    string
+        .replace("\\n", "\n")
+        .replace("\\\"", "\"")
+        .replace("\\'", "'")
+        .replace("\\t", "\t")
 }
