@@ -105,7 +105,10 @@ impl KoolWidget<ElementalMessage> for ElementalWidget {
         let task = match message {
             ElementalMessage::Empty => iced::Task::none(),
             ElementalMessage::Signal(signal) => {
-                dbg!(signal);
+                match signal {
+                    Signal::Refresh => {}
+                }
+
                 iced::Task::none()
             }
         };
