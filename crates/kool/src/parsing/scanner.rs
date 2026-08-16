@@ -171,16 +171,13 @@ fn scan_string(input: &str, start_index: usize, start_quote: char) -> Option<&st
     }
 
     let mut is_escaped = false;
-    let mut end = start;
-    for char in input[start..].chars() {
+    for (end, char) in (start..).zip(input[start..].chars()) {
         match char {
             '\\' => is_escaped = true,
             quote if quote == start_quote && !is_escaped => return Some(&input[start..end]),
             '\n' => return None,
             _ => is_escaped = false,
         }
-
-        end += 1;
     }
 
     None
