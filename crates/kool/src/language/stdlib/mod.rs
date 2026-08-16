@@ -1,11 +1,19 @@
-use crate::language::{
-    Library,
-    stdlib::{basic::basic_functions, conversion::conversion_functions},
+use crate::{
+    elemental::SignalSender,
+    language::{
+        Library,
+        stdlib::{
+            basic::basic_functions, conversion::conversion_functions, signals::signals_functions,
+        },
+    },
 };
 
 mod basic;
 mod conversion;
+mod signals;
 
-pub fn standard_library() -> Library {
-    basic_functions().merge(conversion_functions())
+pub fn standard_library(signal_sender: SignalSender) -> Library {
+    basic_functions()
+        .merge(conversion_functions())
+        .merge(signals_functions(signal_sender))
 }
