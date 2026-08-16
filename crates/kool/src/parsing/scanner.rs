@@ -56,7 +56,14 @@ pub(super) fn scan(input: &str) -> Result<Vec<TokenWithMeta>, ScannerError> {
             ',' => Token::Comma,
             '+' => Token::Plus,
             '-' => Token::Minus,
-            '/' => Token::Slash,
+            '/' => {
+                if chars.next_if(|(_, c)| c.char == '/').is_some() {
+                    while chars.next_if(|(_, c)| c.char != '\n').is_some() {}
+                    continue;
+                } else {
+                    Token::Slash
+                }
+            }
             '*' => Token::Star,
             '^' => Token::Caret,
             '=' => {
