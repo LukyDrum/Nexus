@@ -1,4 +1,9 @@
-use std::{collections::HashMap, fmt::Display, hash::Hash, sync::Arc};
+use std::{
+    collections::HashMap,
+    fmt::Display,
+    hash::Hash,
+    sync::{Arc, RwLock},
+};
 
 use crate::{KoolElement, language::Function};
 
@@ -10,11 +15,13 @@ pub enum Value {
     Bool(bool),
     Int(i64),
     // Pass by reference
+    // Non-indexable
     String(Arc<String>),
-    Array(Arc<Vec<Value>>),
     Element(Arc<KoolElement>),
     Function(Arc<Function>),
-    HashMap(Arc<HashMap<Value, Value>>),
+    // Indexable
+    Array(Arc<RwLock<Vec<Value>>>),
+    HashMap(Arc<RwLock<HashMap<Value, Value>>>),
 }
 
 impl Display for Value {
@@ -27,7 +34,7 @@ impl Display for Value {
             Value::Array(array) => {
                 write!(f, "[")?;
 
-                for value in array.iter() {
+                for value in array.read().expect("Lock poisoned").iter() {
                     write!(f, "{value}, ")?;
                 }
 
@@ -38,7 +45,7 @@ impl Display for Value {
             Value::HashMap(map) => {
                 write!(f, "{{")?;
 
-                for (key, value) in map.iter() {
+                for (key, value) in map.read().expect("Lock poisoned").iter() {
                     write!(f, "{key}: {value}, ")?;
                 }
 
@@ -55,9 +62,14 @@ impl PartialEq for Value {
             (Self::Bool(left), Self::Bool(right)) => left == right,
             (Self::Int(left), Self::Int(right)) => left == right,
             (Self::String(left), Self::String(right)) => left == right,
-            (Self::Array(left), Self::Array(right)) => left == right,
+            (Self::Array(left), Self::Array(right)) => {
+                *left.read().expect("Lock poisoned") == *right.read().expect("Lock poisoned")
+            }
             (Self::Element(left), Self::Element(right)) => left == right,
             (Self::Function(left), Self::Function(right)) => left == right,
+            (Self::HashMap(left), Self::HashMap(right)) => {
+                *left.read().expect("Lock poisoned") == *right.read().expect("Lock poisoned")
+            }
             _ => false,
         }
     }
@@ -70,7 +82,7 @@ impl Hash for Value {
             Value::Bool(bool) => bool.hash(state),
             Value::Int(int) => int.hash(state),
             Value::String(string) => string.hash(state),
-            Value::Array(values) => values.hash(state),
+            Value::Array(values) => values.read().expect("Lock poisoned").hash(state),
             _ => core::mem::discriminant(&Self::Null).hash(state),
         }
     }
@@ -94,7 +106,7 @@ impl Value {
     }
 
     pub fn new_array(array: Vec<Value>) -> Self {
-        Self::Array(Arc::new(array))
+        Self::Array(Arc::new(RwLock::new(array)))
     }
 
     pub fn new_element(element: KoolElement) -> Self {
@@ -106,6 +118,6 @@ impl Value {
     }
 
     pub fn new_hash_map(map: HashMap<Value, Value>) -> Self {
-        Self::HashMap(Arc::new(map))
+        Self::HashMap(Arc::new(RwLock::new(map)))
     }
 }

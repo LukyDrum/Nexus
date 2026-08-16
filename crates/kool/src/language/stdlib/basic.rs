@@ -94,7 +94,12 @@ fn call_function() -> Function {
 
         let mut parts = match tail {
             Value::String(command) => split_command(&command),
-            Value::Array(array) => array.iter().map(|value| value.to_string()).collect(),
+            Value::Array(array) => array
+                .read()
+                .expect("Lock poisoned")
+                .iter()
+                .map(|value| value.to_string())
+                .collect(),
             _ => return Value::Null,
         };
 

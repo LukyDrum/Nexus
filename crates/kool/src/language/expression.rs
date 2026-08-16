@@ -186,34 +186,40 @@ impl Expression {
                     }
 
                     // Array operations
-                    // TODO: Consider not evaluating the whole array and actually only taking the value we need
                     (Value::Array(array), Operator::Index, Value::Int(index)) => {
                         let Ok(index) = usize::try_from(index) else {
                             return Err(EvaluationError::UnexpecteNonPositiveInteger(index));
                         };
 
                         array
+                            .read()
+                            .expect("Lock poisoned")
                             .get(index)
                             .cloned()
                             .ok_or(EvaluationError::IndexOutOfBounds {
-                                value: Value::Array(array),
+                                value: Value::Array(array.clone()),
                                 index,
                             })?
                     }
                     (Value::Array(left), Operator::Add, Value::Array(right)) => {
                         let mut joined = left.clone_inner();
-                        joined.extend(right.iter().cloned());
+                        joined.extend(right.read().expect("Lock poisoned").iter().cloned());
                         Value::new_array(joined)
                     }
 
                     // HashMap operations
-                    (Value::HashMap(map), Operator::Index, key) => {
-                        map.get(&key).cloned().unwrap_or_default()
-                    }
+                    (Value::HashMap(map), Operator::Index, key) => map
+                        .read()
+                        .expect("Lock poisoned")
+                        .get(&key)
+                        .cloned()
+                        .unwrap_or_default(),
                     (Value::HashMap(left), Operator::Add, Value::HashMap(right)) => {
                         let mut joined = left.clone_inner();
                         joined.extend(
                             right
+                                .read()
+                                .expect("Lock poisoned")
                                 .iter()
                                 .map(|(key, value)| (key.clone(), value.clone())),
                         );

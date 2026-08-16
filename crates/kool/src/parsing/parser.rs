@@ -116,20 +116,23 @@ fn statement(
     match peek {
         Token::Ident(ident) if ident == VAR_KEY_WORD => var_declaration(tokens),
         Token::Ident(ident) if ident == DEF_KEYWORD => function_definition(tokens),
-        Token::Ident(_) => {
-            let peek = tokens.multi_peek(2);
-            match peek.get(1) {
-                Some(TokenWithMeta {
-                    token: Token::Equal,
-                    ..
-                }) => {
-                    let name = match_token!(tokens.next(), Token::Ident(name) => name, expected = "a variable name");
-                    var_assignment(tokens, name)
-                }
-                _ => expression(tokens).map(|expression| Statement::Expression { expression }),
+        _ => {
+            let target = expression(tokens)?;
+
+            if let Some(TokenWithMeta {
+                token: Token::Equal,
+                ..
+            }) = tokens.peek()
+            {
+                // Consume =
+                tokens.next();
+                let right_side = expression(tokens)?;
+
+                Ok(Statement::Assignment { target, right_side })
+            } else {
+                Ok(Statement::Expression { expression: target })
             }
         }
-        _ => expression(tokens).map(|expression| Statement::Expression { expression }),
     }
 }
 
@@ -164,21 +167,6 @@ fn var_declaration(
     let expression = expression(tokens)?;
 
     Ok(Statement::VariableDeclaration {
-        variable: name,
-        right_side: expression,
-    })
-}
-
-/// We expect the name of the variable to be handed to us.
-fn var_assignment(
-    tokens: &mut Tokens<impl Iterator<Item = TokenWithMeta>>,
-    name: String,
-) -> Result<Statement, ParserError> {
-    match_token!(tokens.next(), Token::Equal);
-
-    let expression = expression(tokens)?;
-
-    Ok(Statement::VariableAssignment {
         variable: name,
         right_side: expression,
     })
@@ -705,9 +693,6 @@ fn parse_hash_map(
     tokens: &mut Tokens<impl Iterator<Item = TokenWithMeta>>,
 ) -> Result<Expression, ParserError> {
     match_token!(tokens.next(), Token::LeftBrace);
-
-    dbg!("parsing hash map");
-    dbg!(tokens.peek());
 
     let mut pairs = Vec::new();
     while let Some(TokenWithMeta { token, .. }) = tokens.peek() {
