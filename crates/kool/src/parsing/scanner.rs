@@ -32,8 +32,8 @@ pub(super) fn scan(input: &str) -> Result<Vec<TokenWithMeta>, ScannerError> {
                 .map(move |(col, char)| CharWithMeta {
                     char,
                     meta: Metadata {
-                        line: line_num,
-                        col,
+                        line: line_num + 1,
+                        col: col + 1,
                     },
                 })
         })
