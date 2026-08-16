@@ -33,6 +33,10 @@ pub enum Expression {
         then_branch: StatementBlock,
         else_branch: Option<StatementBlock>,
     },
+    WhileLoop {
+        condition: Box<Expression>,
+        body: StatementBlock,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -310,6 +314,16 @@ impl Expression {
                         Value::Null
                     }
                 }
+            }
+            Expression::WhileLoop { condition, body } => {
+                let mut value = Value::Null;
+                while condition.evaluate(environment)?.is_truthy() {
+                    value = body
+                        .execute(environment)
+                        .map_err(|err| EvaluationError::BlockExecution(Box::new(err)))?;
+                }
+
+                value
             }
         })
     }

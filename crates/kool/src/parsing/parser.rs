@@ -91,6 +91,7 @@ const VAR_KEY_WORD: &str = "var";
 const DEF_KEYWORD: &str = "def";
 const IF_KEYWORD: &str = "if";
 const ELSE_KEYWORD: &str = "else";
+const WHILE_KEYWORD: &str = "while";
 
 pub fn parse(tokens: impl Iterator<Item = TokenWithMeta>) -> Result<StatementBlock, ParserError> {
     let mut tokens = MultiPeekable::new(tokens);
@@ -564,6 +565,10 @@ fn primary(
             token: Token::Ident(ident),
             ..
         }) if ident == IF_KEYWORD => if_else(tokens)?,
+        Some(TokenWithMeta {
+            token: Token::Ident(ident),
+            ..
+        }) if ident == WHILE_KEYWORD => while_loop(tokens)?,
         _ => {
             let Some(TokenWithMeta { token, meta }) = tokens.next() else {
                 return Err(ParserError::UnexpectedEof {
@@ -648,6 +653,20 @@ fn if_else(
         condition: Box::new(condition),
         then_branch,
         else_branch,
+    })
+}
+
+fn while_loop(
+    tokens: &mut Tokens<impl Iterator<Item = TokenWithMeta>>,
+) -> Result<Expression, ParserError> {
+    match_token!(tokens.next(), Token::Ident(keyword) => keyword, expected = "while keyword");
+
+    let condition = expression(tokens)?;
+    let body = block(tokens)?;
+
+    Ok(Expression::WhileLoop {
+        condition: Box::new(condition),
+        body,
     })
 }
 
