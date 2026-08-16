@@ -132,7 +132,7 @@ impl Statement {
 }
 
 /// Used in `Statement` and `Function` as well.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct StatementBlock {
     pub statements: Vec<Statement>,
 }

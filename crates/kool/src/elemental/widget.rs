@@ -30,6 +30,7 @@ pub struct ElementalWidget {
 pub enum ElementalMessage {
     Empty,
     Signal(Signal),
+    Callback(Arc<Function>),
 }
 
 impl ElementalWidget {
@@ -86,7 +87,7 @@ impl ElementalWidget {
                 .map_or(ElementalMessage::Empty, ElementalMessage::Signal)
         };
 
-        iced::task::Task::future(future)
+        iced::Task::future(future)
     }
 }
 
@@ -102,18 +103,17 @@ impl KoolWidget<ElementalMessage> for ElementalWidget {
     fn update(&mut self, message: ElementalMessage) -> iced::Task<ElementalMessage> {
         self.root = Self::get_root(&self.view_function);
 
-        let task = match message {
-            ElementalMessage::Empty => iced::Task::none(),
-            ElementalMessage::Signal(signal) => {
-                match signal {
-                    Signal::Refresh => {}
-                }
-
-                iced::Task::none()
+        match message {
+            ElementalMessage::Empty => {}
+            ElementalMessage::Signal(signal) => match signal {
+                Signal::Refresh => {}
+            },
+            ElementalMessage::Callback(callback) => {
+                let _ = callback.call_with_default_args();
             }
-        };
+        }
 
-        iced::task::Task::batch([task, self.wait_for_signal_task()])
+        self.wait_for_signal_task()
     }
 
     fn view<'a>(&'a self) -> impl Into<iced::Element<'a, ElementalMessage>> {

@@ -12,6 +12,14 @@ pub struct Function {
 }
 
 impl Function {
+    pub fn empty_function() -> Self {
+        Self {
+            params: FunctionParams::default(),
+            code: FunctionCode::Block(StatementBlock::default()),
+            closure: None,
+        }
+    }
+
     pub fn default_args(&self) -> FunctionCallArgs {
         let FunctionParams { params, tail_param } = self.params.clone();
 
