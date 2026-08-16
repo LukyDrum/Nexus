@@ -8,7 +8,8 @@ use kool::{
     scan_and_parse,
 };
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let args = ElementalArgs::parse();
 
     let mut config_path = PathBuf::from(args.config);
