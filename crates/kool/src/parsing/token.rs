@@ -14,6 +14,7 @@ pub enum Token {
     Colon,          // :
     Equal,          // =
     Comma,          // ,
+    Dot,            // .
     Plus,           // +
     Minus,          // -
     Slash,          // /

@@ -611,6 +611,14 @@ fn primary(
             Token::LeftParen => {
                 expression = function_call(tokens, expression)?;
             }
+            Token::Dot => {
+                let property = property_access(tokens)?;
+                expression = Expression::Binary {
+                    operator: Operator::Index,
+                    left: Box::new(expression),
+                    right: Box::new(Expression::Value(Value::new_string(property))),
+                };
+            }
             _ => break,
         }
     }
@@ -733,6 +741,15 @@ fn parse_indexing(
     match_token!(tokens.next(), Token::RightBracket);
 
     Ok(expression)
+}
+
+fn property_access(
+    tokens: &mut Tokens<impl Iterator<Item = TokenWithMeta>>,
+) -> Result<String, ParserError> {
+    match_token!(tokens.next(), Token::Dot);
+    let property = match_token!(tokens.next(), Token::Ident(ident) => ident, expected = "accessed property name");
+
+    Ok(property)
 }
 
 fn token_to_operator(token: TokenWithMeta) -> Result<Operator, ParserError> {

@@ -54,6 +54,7 @@ pub(super) fn scan(input: &str) -> Result<Vec<TokenWithMeta>, ScannerError> {
             '}' => Token::RightBrace,
             ':' => Token::Colon,
             ',' => Token::Comma,
+            '.' => Token::Dot,
             '+' => Token::Plus,
             '-' => Token::Minus,
             '/' => {
