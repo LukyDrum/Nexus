@@ -2,7 +2,7 @@ use crate::{
     elemental::SignalSender,
     language::{
         Library,
-        stdlib::{
+        libraries::stdlib::{
             basic::basic_functions, conversion::conversion_functions, signals::signals_functions,
             tasks::task_functions,
         },

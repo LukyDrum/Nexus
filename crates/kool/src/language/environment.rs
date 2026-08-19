@@ -3,7 +3,10 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use crate::language::{Library, Value};
+use crate::{
+    language::{Library, Value},
+    utils::CloneInner,
+};
 
 #[derive(Clone, Debug, Default)]
 pub struct SharedEnvironment {
@@ -27,6 +30,11 @@ impl SharedEnvironment {
             .write()
             .expect("Lock poisoned")
             .set_variable(name, value)
+    }
+
+    /// Clones the inner environment and converts it into a `Library`.
+    pub fn as_library(&self) -> Library {
+        self.inner.clone_inner().into_library()
     }
 }
 
@@ -83,29 +91,35 @@ impl Environment {
     }
 
     /// Converts the whole environment into a `Library`.
-    /// Libraries contain only functions.
     pub fn into_library(self) -> Library {
-        let functions =
-            self.variables
-                .into_iter()
-                .fold(HashMap::new(), |mut lib, (name, value)| {
-                    if let Value::Function(function) = value {
-                        lib.insert(name, function);
-                    }
+        let values = self
+            .variables
+            .into_iter()
+            .fold(HashMap::new(), |mut lib, (name, value)| {
+                lib.insert(name, value);
 
-                    lib
-                });
+                lib
+            });
 
-        Library { functions }
+        Library { values }
     }
 
-    /// Imports `library` into the inner most scope.
+    /// Imports `library` into this environment.
     pub fn import(&mut self, library: Library) {
-        let Library { functions } = library;
-        let functions = functions
-            .into_iter()
-            .map(|(name, function)| (name, Value::Function(function)));
+        let Library { values } = library;
 
-        self.variables.extend(functions);
+        self.variables.extend(values);
+    }
+
+    /// Imports `library` as a namespace into this environment.
+    pub fn import_namespace(&mut self, name: String, library: Library) {
+        let library_values = library
+            .values
+            .into_iter()
+            .map(|(key, value)| (Value::new_string(key), value))
+            .collect();
+        let map = Value::new_hash_map(library_values);
+
+        self.variables.insert(name, map);
     }
 }

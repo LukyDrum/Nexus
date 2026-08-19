@@ -4,7 +4,7 @@ use tokio::sync::mpsc;
 use clap::Parser;
 use kool::{
     ElementalArgs, ElementalConfig, ElementalWidget, KoolWidgetRunner, element_library,
-    language::{Environment, standard_library},
+    language::{Environment, libraries::standard_library},
     scan_and_parse,
 };
 
