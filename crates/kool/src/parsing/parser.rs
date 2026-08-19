@@ -92,6 +92,7 @@ const DEF_KEYWORD: &str = "def";
 const IF_KEYWORD: &str = "if";
 const ELSE_KEYWORD: &str = "else";
 const WHILE_KEYWORD: &str = "while";
+const IMPORT_KEYWORD: &str = "import";
 
 pub fn parse(tokens: impl Iterator<Item = TokenWithMeta>) -> Result<StatementBlock, ParserError> {
     let mut tokens = MultiPeekable::new(tokens);
@@ -116,6 +117,7 @@ fn statement(
     match peek {
         Token::Ident(ident) if ident == VAR_KEY_WORD => var_declaration(tokens),
         Token::Ident(ident) if ident == DEF_KEYWORD => function_definition(tokens),
+        Token::Ident(ident) if ident == IMPORT_KEYWORD => import(tokens),
         _ => {
             let target = expression(tokens)?;
 
@@ -134,6 +136,31 @@ fn statement(
             }
         }
     }
+}
+
+fn import(
+    tokens: &mut Tokens<impl Iterator<Item = TokenWithMeta>>,
+) -> Result<Statement, ParserError> {
+    match_token!(tokens.next(), Token::Ident(ident) => ident, expected = "the import keyword");
+
+    let library_name = match_token!(tokens.next(), Token::Ident(library_name) => library_name, expected = "a library name");
+
+    let as_namespace = if let Some(TokenWithMeta {
+        token: Token::Dot, ..
+    }) = tokens.peek()
+    {
+        match_token!(tokens.next(), Token::Dot);
+        match_token!(tokens.next(), Token::Star);
+
+        false
+    } else {
+        true
+    };
+
+    Ok(Statement::Import {
+        library_name,
+        as_namespace,
+    })
 }
 
 fn block(

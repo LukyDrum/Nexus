@@ -36,6 +36,17 @@ impl SharedEnvironment {
     pub fn as_library(&self) -> Library {
         self.inner.clone_inner().into_library()
     }
+
+    pub fn import(&self, library: Library) {
+        self.inner.write().expect("Lock poisoned").import(library);
+    }
+
+    pub fn import_namespace(&self, name: String, library: Library) {
+        self.inner
+            .write()
+            .expect("Lock poisoned")
+            .import_namespace(name, library);
+    }
 }
 
 #[derive(Clone, Debug, Default)]

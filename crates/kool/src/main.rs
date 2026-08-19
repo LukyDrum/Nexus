@@ -1,11 +1,9 @@
 use std::path::PathBuf;
-use tokio::sync::mpsc;
 
 use clap::Parser;
 use kool::{
-    ElementalArgs, ElementalConfig, ElementalWidget, KoolWidgetRunner, element_library,
-    language::{Environment, libraries::standard_library},
-    scan_and_parse,
+    ElementalArgs, ElementalConfig, ElementalWidget, KoolWidgetRunner, init_signal_channel,
+    root_environment, scan_and_parse,
 };
 
 #[tokio::main]
@@ -24,28 +22,18 @@ async fn main() {
     let kool_source =
         scan_and_parse(&kool_source).expect("Failed to scan and parse the source code");
 
-    // Signal channel
-    let (signal_sender, signal_receiver) = mpsc::unbounded_channel();
-
-    // Setup runtime
-    let mut runtime = Environment::default();
-    runtime.import(standard_library(signal_sender));
-    runtime.import(element_library());
-    let runtime = runtime.into_shared();
-
-    for pair in args.var {
-        runtime.define_variable(pair.name, pair.value);
-    }
+    let signal_receiver = init_signal_channel();
+    let root_environment = root_environment().into_shared();
 
     let _ = kool_source
-        .execute(&runtime)
+        .execute(&root_environment)
         .expect("Failed to execute Kool source code");
 
     let widget = ElementalWidget::new(
         config.name,
         config.settings,
         config.visual,
-        runtime,
+        root_environment,
         signal_receiver,
     );
 

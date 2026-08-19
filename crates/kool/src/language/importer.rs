@@ -8,9 +8,9 @@ use std::{
 use thiserror::Error;
 
 use crate::{
-    language::{Library, SharedEnvironment, StatementExecutionError, libraries::BUILTIN_LIBRARIES},
+    language::{Environment, Library, StatementExecutionError, libraries::BUILTIN_LIBRARIES},
     parsing::ScanAndParserError,
-    scan_and_parse,
+    root_environment, scan_and_parse,
 };
 
 static LIBRARY_CACHE: LazyLock<Mutex<HashMap<String, Library>>> =
@@ -70,7 +70,8 @@ fn try_load_from_file(file: &Path) -> Result<Library, LibraryLoadError> {
     let input = fs::read_to_string(file).map_err(|_| LibraryLoadError::NotFound)?;
     let source = scan_and_parse(&input).map_err(LibraryLoadError::ParsingFailed)?;
 
-    let environment = SharedEnvironment::default();
+    let root = root_environment().into_shared();
+    let environment = Environment::new(Some(root)).into_shared();
     let _ = source
         .execute(&environment)
         .map_err(LibraryLoadError::ExecutionFailed);

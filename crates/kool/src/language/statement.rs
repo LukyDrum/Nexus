@@ -1,4 +1,6 @@
-use crate::language::{EvaluationError, Expression, Operator, SharedEnvironment, Value};
+use crate::language::{
+    EvaluationError, Expression, LibraryLoadError, Operator, SharedEnvironment, Value, load_library,
+};
 
 #[derive(Clone, Debug)]
 pub enum Statement {
@@ -13,6 +15,10 @@ pub enum Statement {
     Expression {
         expression: Expression,
     },
+    Import {
+        library_name: String,
+        as_namespace: bool,
+    },
 }
 
 #[derive(Clone, Debug)]
@@ -21,6 +27,7 @@ pub enum StatementExecutionError {
     VariableRedeclaration(String),
     FunctionRedefinition(String),
     ExpressionEvaluation(EvaluationError),
+    LibraryLoading(Box<LibraryLoadError>),
 }
 
 impl Statement {
@@ -125,6 +132,20 @@ impl Statement {
             Statement::Expression { expression } => expression
                 .evaluate(environment)
                 .map_err(StatementExecutionError::ExpressionEvaluation)?,
+            Statement::Import {
+                library_name,
+                as_namespace,
+            } => {
+                let library = load_library(library_name)
+                    .map_err(|err| StatementExecutionError::LibraryLoading(Box::new(err)))?;
+                if *as_namespace {
+                    environment.import_namespace(library_name.clone(), library);
+                } else {
+                    environment.import(library);
+                }
+
+                Value::Null
+            }
         };
 
         Ok(value)
