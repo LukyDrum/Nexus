@@ -5,7 +5,7 @@ use std::{
 
 use crate::style::{CommonStyle, StyleKey};
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct StyleTree {
     style: CommonStyle,
     subtrees: HashMap<StyleKey, Rc<StyleTree>>,

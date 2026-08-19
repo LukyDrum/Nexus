@@ -4,12 +4,15 @@ use crate::{
     KoolElement,
     element::{
         BuildContext, Element,
-        common::{CONTENT_PARAM, KEY_PARAM, element_base_params},
+        common::{
+            CONTENT_PARAM, KEY_PARAM, build_with_style, element_base_params,
+            get_style_from_environment,
+        },
     },
     elemental::ElementalMessage,
     get_var_or_elem_error,
     language::{Function, FunctionCode, SharedEnvironment, Value},
-    style::{StyleKey, WithStyle, WithStyleKey},
+    style::{CommonStyle, StyleKey},
     utils::CloneInner,
 };
 
@@ -18,6 +21,7 @@ pub struct Button {
     pub key: String,
     pub content: Arc<KoolElement>,
     pub callback: Arc<Function>,
+    pub style: Option<CommonStyle>,
 }
 
 impl<'a> Element<'a> for Button {
@@ -31,11 +35,7 @@ impl<'a> Element<'a> for Button {
         let widget = iced::widget::Button::new(content)
             .on_press(ElementalMessage::Callback(self.callback.clone()));
 
-        if key.is_empty() {
-            widget.with_style(style)
-        } else {
-            widget.with_style_key(key).with_style(style).element()
-        }
+        build_with_style(widget, style, key, self.style)
     }
 
     fn kool_function() -> (&'static str, Function) {
@@ -51,11 +51,13 @@ impl<'a> Element<'a> for Button {
                 .clone_inner();
             let content = get_var_or_elem_error!(CONTENT_PARAM, environment, Value::Element(content) => content);
             let callback = get_var_or_elem_error!(CALLBACK_PARAM, environment, Value::Function(callback) => callback);
+            let style = get_style_from_environment(environment);
 
             Value::new_element(KoolElement::Button(Self {
                 key,
                 content,
                 callback,
+                style,
             }))
         };
 

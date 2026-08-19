@@ -109,6 +109,7 @@ pub struct FunctionParams {
 
 impl FunctionParams {
     /// Builder method for adding a parameter along with its default value.
+    /// Setting `default` to `None` is the same as setting it to `Some(Value::Null)`.
     pub fn with_param(mut self, param: impl Into<String>, default: Option<Value>) -> Self {
         self.params
             .insert(param.into(), default.unwrap_or_default());

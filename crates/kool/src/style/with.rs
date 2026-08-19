@@ -1,6 +1,8 @@
 use std::rc::Rc;
 
-use crate::style::{ElementWithStyleId, StyleTree, WithStyleKey};
+use crate::style::{
+    ElementWithStyleId, ElementWithStyleOverride, StyleTree, WithStyleKey, WithStyleOverride,
+};
 
 pub trait WithStyle {
     const BASE_KEY: &'static str;
@@ -31,6 +33,32 @@ where
         self.element()
             .with_style(Rc::new(adhoc_tree))
             .with_style_key(style_id)
+    }
+}
+
+impl<T> WithStyle for ElementWithStyleOverride<T>
+where
+    T: WithStyle,
+{
+    const BASE_KEY: &'static str = T::BASE_KEY;
+
+    fn with_style(self, style: Rc<StyleTree>) -> Self {
+        let base_tree = Self::base_tree(&style);
+        let override_style = *self.override_style();
+
+        let mut adhoc_tree = StyleTree::default();
+        adhoc_tree.set_style(style.style());
+
+        let merged_style = override_style.inherit(&base_tree.style());
+
+        let mut overridden_base_tree = StyleTree::default();
+        overridden_base_tree.set_style(merged_style);
+        adhoc_tree.nest(Self::BASE_KEY, Rc::new(overridden_base_tree));
+
+        // Need to go back to `ElementWithStyleOverride` due to trait definition
+        self.into_element()
+            .with_style(Rc::new(adhoc_tree))
+            .with_style_override(override_style)
     }
 }
 

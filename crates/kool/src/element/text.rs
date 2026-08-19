@@ -2,11 +2,14 @@ use crate::{
     KoolElement,
     element::{
         BuildContext, Element,
-        common::{CONTENT_PARAM, KEY_PARAM, element_base_params},
+        common::{
+            CONTENT_PARAM, KEY_PARAM, build_with_style, element_base_params,
+            get_style_from_environment,
+        },
     },
     get_var_or_elem_error,
     language::{Function, FunctionCode, SharedEnvironment, Value},
-    style::{StyleKey, WithStyle, WithStyleKey},
+    style::{CommonStyle, StyleKey},
     utils::CloneInner,
 };
 
@@ -14,6 +17,7 @@ use crate::{
 pub struct Text {
     pub key: String,
     pub content: String,
+    pub style: Option<CommonStyle>,
 }
 
 impl<'a> Element<'a> for Text {
@@ -25,11 +29,7 @@ impl<'a> Element<'a> for Text {
 
         let widget = iced::widget::Text::new(self.content.clone());
 
-        if key.is_empty() {
-            widget.with_style(style)
-        } else {
-            widget.with_style_key(key).with_style(style).element()
-        }
+        build_with_style(widget, style, key, self.style)
     }
 
     fn kool_function() -> (&'static str, Function) {
@@ -39,10 +39,12 @@ impl<'a> Element<'a> for Text {
             let key = get_var_or_elem_error!(KEY_PARAM, environment, Value::String(key) => key)
                 .clone_inner();
             let content = get_var_or_elem_error!(CONTENT_PARAM, environment, value => value);
+            let style = get_style_from_environment(environment);
 
             Value::new_element(KoolElement::Text(Self {
                 key,
                 content: content.to_string(),
+                style,
             }))
         };
 

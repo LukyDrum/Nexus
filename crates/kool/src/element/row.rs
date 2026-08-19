@@ -2,13 +2,16 @@ use crate::{
     KoolElement,
     element::{
         BuildContext, Element,
-        common::{CONTENT_PARAM, KEY_PARAM, element_base_params},
+        common::{
+            CONTENT_PARAM, KEY_PARAM, build_with_style, element_base_params,
+            get_style_from_environment,
+        },
         kool::Error,
     },
     elemental::ElementalMessage,
     get_var_or_elem_error,
     language::{Function, FunctionCode, SharedEnvironment, Value},
-    style::{StyleKey, WithStyle, WithStyleKey},
+    style::{CommonStyle, StyleKey},
     utils::CloneInner,
 };
 
@@ -16,6 +19,7 @@ use crate::{
 pub struct Row {
     pub key: String,
     pub content: Vec<KoolElement>,
+    pub style: Option<CommonStyle>,
 }
 
 impl<'a> Element<'a> for Row {
@@ -28,11 +32,7 @@ impl<'a> Element<'a> for Row {
         let children = self.content.iter().map(|child| child.build(context));
         let widget = iced::widget::Row::new().extend(children);
 
-        if key.is_empty() {
-            widget.with_style(style)
-        } else {
-            widget.with_style_key(key).with_style(style).element()
-        }
+        build_with_style(widget, style, key, self.style)
     }
 
     fn kool_function() -> (&'static str, Function) {
@@ -54,8 +54,13 @@ impl<'a> Element<'a> for Row {
                     }
                 })
                 .collect();
+            let style = get_style_from_environment(environment);
 
-            Value::new_element(KoolElement::Row(Self { key, content }))
+            Value::new_element(KoolElement::Row(Self {
+                key,
+                content,
+                style,
+            }))
         };
 
         (
