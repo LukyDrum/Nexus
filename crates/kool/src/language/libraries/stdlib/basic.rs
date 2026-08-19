@@ -10,7 +10,7 @@ pub(super) fn basic_functions() -> Library {
     Library::from([
         ("print", print_function()),
         ("sum", sum_function()),
-        ("call", call_function()),
+        ("exec", exec_function()),
     ])
 }
 
@@ -85,11 +85,11 @@ fn sum_function() -> Function {
     }
 }
 
-fn call_function() -> Function {
+fn exec_function() -> Function {
     const TAIL_PARAM: &str = "tail";
 
     let params = FunctionParams::default().with_tail(TAIL_PARAM);
-    let call_impl = |environment: &SharedEnvironment| -> Value {
+    let exec_impl = |environment: &SharedEnvironment| -> Value {
         let tail = environment.get_variable(TAIL_PARAM).unwrap_or_default();
 
         let mut parts = match tail {
@@ -118,7 +118,7 @@ fn call_function() -> Function {
 
     Function {
         params,
-        code: FunctionCode::new_host(call_impl),
+        code: FunctionCode::new_host(exec_impl),
         closure: None,
     }
 }
