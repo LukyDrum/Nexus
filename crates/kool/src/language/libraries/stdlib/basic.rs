@@ -1,3 +1,5 @@
+use chrono::{Datelike, Timelike};
+
 use crate::{
     language::{
         Expression, Function, FunctionCode, FunctionParams, Library, Operator, SharedEnvironment,
@@ -11,6 +13,8 @@ pub(super) fn basic_functions() -> Library {
         ("print", print_function()),
         ("sum", sum_function()),
         ("exec", exec_function()),
+        ("date_str", date_str_function()),
+        ("date", date_function()),
     ])
 }
 
@@ -146,4 +150,57 @@ fn split_command(command: &str) -> Vec<String> {
 
 fn is_quote(c: char) -> bool {
     c == '"' || c == '\''
+}
+
+fn date_str_function() -> Function {
+    const TAIL_PARAM: &str = "tail";
+
+    let params = FunctionParams::default().with_tail(TAIL_PARAM);
+    let date_str_impl = |environment: &SharedEnvironment| -> Value {
+        let tail = environment.get_variable(TAIL_PARAM).unwrap_or_default();
+
+        let now = chrono::Local::now();
+        let formatted = if let Value::String(format) = tail {
+            now.format(&format).to_string()
+        } else {
+            now.to_rfc3339()
+        };
+
+        Value::new_string(formatted)
+    };
+
+    Function {
+        params,
+        code: FunctionCode::new_host(date_str_impl),
+        closure: None,
+    }
+}
+
+fn date_function() -> Function {
+    let params = FunctionParams::default();
+    let date_impl = |_: &SharedEnvironment| -> Value {
+        let now = chrono::Local::now();
+        let date_obj_values = [
+            ("year", Value::Int(now.year() as i64)),
+            ("month", Value::Int(now.month() as i64)),
+            ("day", Value::Int(now.day() as i64)),
+            ("hour", Value::Int(now.hour() as i64)),
+            ("minute", Value::Int(now.minute() as i64)),
+            ("second", Value::Int(now.second() as i64)),
+            ("weekday", Value::new_string(now.weekday().to_string())),
+        ];
+
+        Value::new_hash_map(
+            date_obj_values
+                .into_iter()
+                .map(|(key, value)| (Value::new_string(key.to_owned()), value))
+                .collect(),
+        )
+    };
+
+    Function {
+        params,
+        code: FunctionCode::new_host(date_impl),
+        closure: None,
+    }
 }
