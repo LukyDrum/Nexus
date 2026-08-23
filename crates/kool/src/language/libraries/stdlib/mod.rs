@@ -3,14 +3,15 @@ use crate::{
     language::{
         Library,
         libraries::stdlib::{
-            basic::basic_functions, conversion::conversion_functions, math::math_functions,
-            signals::signals_functions, string_and_array::string_and_array_functions,
-            tasks::task_functions,
+            basic::basic_functions, collections::collections_functions,
+            conversion::conversion_functions, math::math_functions, signals::signals_functions,
+            string_and_array::string_and_array_functions, tasks::task_functions,
         },
     },
 };
 
 mod basic;
+mod collections;
 mod conversion;
 mod math;
 mod signals;
@@ -24,4 +25,5 @@ pub fn standard_library(signal_sender: SignalSender) -> Library {
         .merge(task_functions())
         .merge(math_functions())
         .merge(string_and_array_functions())
+        .merge(collections_functions())
 }
