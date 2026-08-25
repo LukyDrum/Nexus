@@ -4,8 +4,9 @@ use crate::{
         Library,
         libraries::stdlib::{
             basic::basic_functions, collections::collections_functions,
-            conversion::conversion_functions, math::math_functions, signals::signals_functions,
-            string_and_array::string_and_array_functions, tasks::task_functions,
+            conversion::conversion_functions, format::format_library, math::math_functions,
+            signals::signals_functions, string_and_array::string_and_array_functions,
+            tasks::task_functions,
         },
     },
 };
@@ -13,6 +14,7 @@ use crate::{
 mod basic;
 mod collections;
 mod conversion;
+mod format;
 mod math;
 mod signals;
 mod string_and_array;
@@ -25,5 +27,6 @@ pub fn standard_library(signal_sender: SignalSender) -> Library {
         .merge(task_functions())
         .merge(math_functions())
         .merge(string_and_array_functions())
+        .merge(format_library())
         .merge(collections_functions())
 }
