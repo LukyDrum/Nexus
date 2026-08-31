@@ -12,6 +12,7 @@ pub struct KoolCtl {
 #[derive(Debug, clap::Subcommand)]
 pub enum ControlCommand {
     Run { path: String },
+    Close { path: String },
 }
 
 impl From<ControlCommand> for ControlMessage {
@@ -22,6 +23,12 @@ impl From<ControlCommand> for ControlMessage {
                 let path = std::path::absolute(&path).unwrap_or(path);
 
                 Self::Run { path }
+            }
+            ControlCommand::Close { path } => {
+                let path = PathBuf::from(path);
+                let path = std::path::absolute(&path).unwrap_or(path);
+
+                Self::Close { path }
             }
         }
     }

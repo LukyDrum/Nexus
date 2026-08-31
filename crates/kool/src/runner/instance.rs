@@ -9,7 +9,7 @@ use crate::{
     language::{Function, FunctionError, SharedEnvironment, StatementExecutionError, Value},
     parsing::ScanAndParserError,
     root_environment,
-    runner::WidgetSettings,
+    runner::{WidgetMessage, WidgetSettings},
     scan_and_parse,
 };
 
@@ -90,5 +90,13 @@ impl WidgetInstance {
             settings,
             view_function,
         })
+    }
+
+    pub fn handle_message(&mut self, message: WidgetMessage) {
+        match message {
+            WidgetMessage::Callback(function) => {
+                let _result = function.call_with_default_args();
+            }
+        }
     }
 }

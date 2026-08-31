@@ -91,26 +91,17 @@ impl KoolRunner {
                                 println!("{error}");
                             }
                         }
-                    } // ControlMessage::Close(id) => {
-                      //     if let Some(window_id) = self.windows.remove(&id) {
-                      //         self.instances.remove(&window_id);
+                    }
+                    ControlMessage::Close { path } => {
+                        let id = WidgetId::new(path);
+                        if let Some(window_id) = self.windows.remove(&id) {
+                            self.instances.remove(&window_id);
 
-                      //         let msg = RunnerMessage::RemoveWindow(window_id);
+                            let msg = RunnerMessage::RemoveWindow(window_id);
 
-                      //         return Task::done(msg);
-                      //     }
-                      // }
-                      // ControlMessage::CloseAll => {
-                      //     let mut tasks = Vec::with_capacity(self.windows.len());
-                      //     for (_, window_id) in self.windows.drain() {
-                      //         self.instances.remove(&window_id);
-
-                      //         let msg = RunnerMessage::RemoveWindow(window_id);
-                      //         tasks.push(Task::done(msg));
-                      //     }
-
-                      //     return Task::batch(tasks);
-                      // }
+                            return Task::done(msg);
+                        }
+                    }
                 }
             }
             RunnerMessage::Signal(signal) => {
@@ -121,7 +112,13 @@ impl KoolRunner {
                 }
             }
             RunnerMessage::Widget { id, message } => {
-                todo!("handle the message on the widget designated by its id")
+                if let Some(widget) = self
+                    .windows
+                    .get(&id)
+                    .and_then(|window_id| self.instances.get_mut(window_id))
+                {
+                    widget.handle_message(message);
+                }
             }
 
             // The rest of `RunnerMessage` is exwlshell auto-injected
