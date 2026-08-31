@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use iced::{Subscription, Task, futures::StreamExt, window::Id as WindowId};
+use iced_exwlshell::settings::LayerShellSettings;
 use koolctl::ControlMessage;
 
 use crate::{
@@ -62,6 +63,9 @@ impl KoolRunner {
                     ControlMessage::Run { path } => {
                         // This should handle both running new and reloading widgets
                         let id = WidgetId::new(path);
+
+                        let already_spawned = self.windows.contains_key(&id);
+
                         match WidgetInstance::init(id.clone()) {
                             Ok(instance) => {
                                 let window_id =
@@ -69,12 +73,19 @@ impl KoolRunner {
                                 let entry = self.instances.entry(*window_id).insert_entry(instance);
                                 let instance = entry.get();
 
-                                let msg = RunnerMessage::NewLayerShell {
-                                    settings: instance.settings.clone().into(),
-                                    id: *window_id,
-                                };
+                                if already_spawned {
+                                    return Task::batch(Self::update_settings_tasks(
+                                        *window_id,
+                                        instance.settings.clone(),
+                                    ));
+                                } else {
+                                    let msg = RunnerMessage::NewLayerShell {
+                                        settings: instance.settings.clone().into(),
+                                        id: *window_id,
+                                    };
 
-                                return Task::done(msg);
+                                    return Task::done(msg);
+                                }
                             }
                             Err(error) => {
                                 println!("{error}");
@@ -139,5 +150,31 @@ impl KoolRunner {
                 id: instance.id.clone(),
                 message,
             })
+    }
+
+    fn update_settings_tasks(
+        id: WindowId,
+        settings: WidgetSettings,
+    ) -> impl IntoIterator<Item = Task<RunnerMessage>> {
+        let settings: LayerShellSettings = settings.into();
+        [
+            Task::done(RunnerMessage::AnchorSizeChange {
+                id,
+                anchor: settings.anchor,
+                size: settings.size.unwrap_or_default(),
+            }),
+            Task::done(RunnerMessage::LayerChange {
+                id,
+                layer: settings.layer,
+            }),
+            Task::done(RunnerMessage::MarginChange {
+                id,
+                margin: settings.margin,
+            }),
+            Task::done(RunnerMessage::ExclusiveZoneChange {
+                id,
+                zone_size: settings.exclusive_zone,
+            }),
+        ]
     }
 }

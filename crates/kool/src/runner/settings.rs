@@ -38,7 +38,20 @@ impl Default for WidgetSettings {
 
 impl From<WidgetSettings> for iced_exwlshell::Settings {
     fn from(value: WidgetSettings) -> Self {
-        let layer_settings = LayerShellSettings {
+        let id = value.name.clone();
+        let layer_settings = value.into();
+
+        iced_exwlshell::Settings {
+            id,
+            layer_settings,
+            ..Default::default()
+        }
+    }
+}
+
+impl From<WidgetSettings> for LayerShellSettings {
+    fn from(value: WidgetSettings) -> Self {
+        LayerShellSettings {
             anchor: value
                 .anchors
                 .into_iter()
@@ -48,12 +61,6 @@ impl From<WidgetSettings> for iced_exwlshell::Settings {
             size: value.size,
             margin: value.margin,
             events_transparent: value.click_through,
-            ..Default::default()
-        };
-
-        iced_exwlshell::Settings {
-            id: value.name,
-            layer_settings,
             ..Default::default()
         }
     }
