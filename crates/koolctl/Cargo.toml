@@ -1,0 +1,12 @@
+[package]
+name = "koolctl"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+
+[dependencies]
+clap.workspace = true
+postcard.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+xdg.workspace = true

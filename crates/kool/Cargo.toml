@@ -9,6 +9,7 @@ chrono.workspace = true
 clap.workspace = true
 iced.workspace = true
 iced_exwlshell.workspace = true
+koolctl = { path = "../koolctl" }
 serde.workspace = true
 strum.workspace = true
 thiserror.workspace = true

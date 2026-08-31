@@ -1,13 +1,14 @@
 use std::collections::HashMap;
 
 use iced::{Subscription, Task, futures::StreamExt, window::Id as WindowId};
+use koolctl::ControlMessage;
 
 use crate::{
     BuildContext,
     language::Value,
     runner::{
-        ControlMessage, RunnerMessage, Signal, WidgetId, WidgetInstance, WidgetSettings,
-        init_signal_channel, take_signal_receiver,
+        RunnerMessage, Signal, WidgetId, WidgetInstance, WidgetSettings, init_control_server,
+        init_signal_channel, take_control_receiver, take_signal_receiver,
     },
 };
 
@@ -19,23 +20,17 @@ pub struct KoolRunner {
 
 impl KoolRunner {
     pub fn run() -> Result<(), iced_exwlshell::Error> {
+        init_control_server();
         init_signal_channel();
-
-        let boot = || {
-            (
-                KoolRunner::new(),
-                Task::done(RunnerMessage::Control(ControlMessage::Run(WidgetId::new(
-                    "/media/Files/Dotfiles/bar/bar.kool",
-                )))),
-            )
-        };
 
         let mut settings: iced_exwlshell::Settings = WidgetSettings::default().into();
         settings.layer_settings.start_mode = iced_exwlshell::settings::StartMode::Background;
 
-        iced_exwlshell::daemon(boot, "Kool", Self::update, Self::view)
+        iced_exwlshell::daemon(KoolRunner::new, "Kool", Self::update, Self::view)
             .settings(settings)
-            .subscription(|_| Self::signal_subscription())
+            .subscription(|_| {
+                Subscription::batch([Self::control_subscription(), Self::signal_subscription()])
+            })
             .run()
     }
 
@@ -53,14 +48,20 @@ impl KoolRunner {
         })
     }
 
-    fn update(&mut self, message: RunnerMessage) -> Task<RunnerMessage> {
-        dbg!(&message);
+    fn control_subscription() -> Subscription<RunnerMessage> {
+        Subscription::run(|| {
+            let receiver = take_control_receiver();
+            receiver.map(RunnerMessage::Control)
+        })
+    }
 
+    fn update(&mut self, message: RunnerMessage) -> Task<RunnerMessage> {
         match message {
             RunnerMessage::Control(control_msg) => {
                 match control_msg {
-                    ControlMessage::Run(id) => {
+                    ControlMessage::Run { path } => {
                         // This should handle both running new and reloading widgets
+                        let id = WidgetId::new(path);
                         match WidgetInstance::init(id.clone()) {
                             Ok(instance) => {
                                 let window_id =
@@ -79,27 +80,26 @@ impl KoolRunner {
                                 println!("{error}");
                             }
                         }
-                    }
-                    ControlMessage::Close(id) => {
-                        if let Some(window_id) = self.windows.remove(&id) {
-                            self.instances.remove(&window_id);
+                    } // ControlMessage::Close(id) => {
+                      //     if let Some(window_id) = self.windows.remove(&id) {
+                      //         self.instances.remove(&window_id);
 
-                            let msg = RunnerMessage::RemoveWindow(window_id);
+                      //         let msg = RunnerMessage::RemoveWindow(window_id);
 
-                            return Task::done(msg);
-                        }
-                    }
-                    ControlMessage::CloseAll => {
-                        let mut tasks = Vec::with_capacity(self.windows.len());
-                        for (_, window_id) in self.windows.drain() {
-                            self.instances.remove(&window_id);
+                      //         return Task::done(msg);
+                      //     }
+                      // }
+                      // ControlMessage::CloseAll => {
+                      //     let mut tasks = Vec::with_capacity(self.windows.len());
+                      //     for (_, window_id) in self.windows.drain() {
+                      //         self.instances.remove(&window_id);
 
-                            let msg = RunnerMessage::RemoveWindow(window_id);
-                            tasks.push(Task::done(msg));
-                        }
+                      //         let msg = RunnerMessage::RemoveWindow(window_id);
+                      //         tasks.push(Task::done(msg));
+                      //     }
 
-                        return Task::batch(tasks);
-                    }
+                      //     return Task::batch(tasks);
+                      // }
                 }
             }
             RunnerMessage::Signal(signal) => {

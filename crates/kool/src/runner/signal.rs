@@ -24,7 +24,6 @@ pub fn get_signal_sender() -> SignalSender {
 }
 
 pub fn take_signal_receiver() -> SignalReceiver {
-    dbg!("receiver taken");
     SIGNAL_RECEIVER
         .lock()
         .unwrap()

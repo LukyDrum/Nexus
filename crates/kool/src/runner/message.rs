@@ -1,6 +1,7 @@
 use std::{fmt::Debug, sync::Arc};
 
 use iced_exwlshell::to_exwlshell_message;
+use koolctl::ControlMessage;
 
 use crate::{
     language::Function,
@@ -16,13 +17,6 @@ pub enum RunnerMessage {
         id: WidgetId,
         message: WidgetMessage,
     },
-}
-
-#[derive(Clone, Debug)]
-pub enum ControlMessage {
-    Run(WidgetId),
-    Close(WidgetId),
-    CloseAll,
 }
 
 #[derive(Clone, Debug)]
