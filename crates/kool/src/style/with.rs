@@ -1,127 +1,53 @@
-use std::rc::Rc;
+use crate::style::CommonStyle;
 
-use crate::style::{
-    ElementWithStyleId, ElementWithStyleOverride, StyleTree, WithStyleKey, WithStyleOverride,
-};
-
+/// Describes how a `CommonStyle` applies to an iced element.
 pub trait WithStyle {
-    const BASE_KEY: &'static str;
-
-    fn with_style(self, style: Rc<StyleTree>) -> Self;
-
-    fn base_tree(style: &Rc<StyleTree>) -> Rc<StyleTree> {
-        StyleTree::subtree(style, Self::BASE_KEY)
-    }
-}
-
-impl<T> WithStyle for ElementWithStyleId<T>
-where
-    T: WithStyle,
-{
-    const BASE_KEY: &'static str = T::BASE_KEY;
-
-    fn with_style(self, style: Rc<StyleTree>) -> Self {
-        let style_id = self.style_id().clone();
-        let id_tree = StyleTree::subtree(&style, style_id.clone());
-        let base_tree = Self::base_tree(&style);
-
-        let mut adhoc_tree = StyleTree::default();
-        adhoc_tree.set_style(base_tree.style().inherit(&style.style()));
-        adhoc_tree.nest(Self::BASE_KEY, id_tree);
-
-        // Need to go back to `ElementWithStyleId` due to trait definition
-        self.element()
-            .with_style(Rc::new(adhoc_tree))
-            .with_style_key(style_id)
-    }
-}
-
-impl<T> WithStyle for ElementWithStyleOverride<T>
-where
-    T: WithStyle,
-{
-    const BASE_KEY: &'static str = T::BASE_KEY;
-
-    fn with_style(self, style: Rc<StyleTree>) -> Self {
-        let base_tree = Self::base_tree(&style);
-        let override_style = *self.override_style();
-
-        let mut adhoc_tree = StyleTree::default();
-        adhoc_tree.set_style(style.style());
-
-        let merged_style = override_style.inherit(&base_tree.style());
-
-        let mut overridden_base_tree = StyleTree::default();
-        overridden_base_tree.set_style(merged_style);
-        adhoc_tree.nest(Self::BASE_KEY, Rc::new(overridden_base_tree));
-
-        // Need to go back to `ElementWithStyleOverride` due to trait definition
-        self.into_element()
-            .with_style(Rc::new(adhoc_tree))
-            .with_style_override(override_style)
-    }
+    fn with_style(self, style: CommonStyle) -> Self;
 }
 
 /* `WithStyle` impls for iced elements */
 
 impl<'a> WithStyle for iced::widget::Text<'a> {
-    const BASE_KEY: &'static str = "text";
-
-    fn with_style(self, style: Rc<StyleTree>) -> Self {
-        let common = style.get(Self::BASE_KEY);
-
-        self.width(common.width())
-            .height(common.height())
-            .size(common.text_size())
-            .line_height(common.line_height())
-            .align_x(common.align_x())
-            .align_y(common.align_y())
-            .font_maybe(common.font())
+    fn with_style(self, style: CommonStyle) -> Self {
+        self.width(style.width())
+            .height(style.height())
+            .size(style.text_size())
+            .line_height(style.line_height())
+            .align_x(style.align_x())
+            .align_y(style.align_y())
+            .font_maybe(style.font())
             .style(move |_theme| iced::widget::text::Style {
-                color: common.color(),
+                color: style.color(),
             })
     }
 }
 
 impl<'a, Msg> WithStyle for iced::widget::Container<'a, Msg> {
-    const BASE_KEY: &'static str = "container";
-
-    fn with_style(self, style: Rc<StyleTree>) -> Self {
-        let common = style.get(Self::BASE_KEY);
-
-        self.padding(common.padding())
-            .width(common.width())
-            .height(common.height())
-            .align_x(common.align_x())
-            .align_y(common.align_y())
+    fn with_style(self, style: CommonStyle) -> Self {
+        self.padding(style.padding())
+            .width(style.width())
+            .height(style.height())
+            .align_x(style.align_x())
+            .align_y(style.align_y())
             .style(move |_theme| iced::widget::container::Style {
-                text_color: common.color(),
-                background: common.background(),
-                border: common.border(),
+                text_color: style.color(),
+                background: style.background(),
+                border: style.border(),
                 ..Default::default()
             })
     }
 }
 
 impl<'a, Msg> WithStyle for iced::widget::Button<'a, Msg> {
-    const BASE_KEY: &'static str = "button";
-
-    fn with_style(self, style: Rc<StyleTree>) -> Self {
-        let base_tree = Self::base_tree(&style);
-        let common = base_tree.style();
-
-        self.padding(base_tree.style().padding())
-            .width(common.width())
-            .height(common.height())
-            .style(move |theme, status| {
-                let common = base_tree.get(status);
-
-                iced::widget::button::Style {
-                    background: common.background(),
-                    text_color: common.color().unwrap_or(theme.palette().text),
-                    border: common.border(),
-                    ..Default::default()
-                }
+    fn with_style(self, style: CommonStyle) -> Self {
+        self.padding(style.padding())
+            .width(style.width())
+            .height(style.height())
+            .style(move |theme, _| iced::widget::button::Style {
+                background: style.background(),
+                text_color: style.color().unwrap_or_else(|| theme.palette().text),
+                border: style.border(),
+                ..Default::default()
             })
     }
 }
@@ -130,60 +56,44 @@ impl<'a, Msg> WithStyle for iced::widget::TextInput<'a, Msg>
 where
     Msg: Clone,
 {
-    const BASE_KEY: &'static str = "input";
-
-    fn with_style(self, style: Rc<StyleTree>) -> Self {
-        let base_tree = Self::base_tree(&style);
-        let common = base_tree.style();
-
-        self.padding(base_tree.style().padding())
-            .width(common.width())
-            .size(common.text_size())
-            .line_height(common.line_height())
-            .align_x(common.align_x())
-            .font(common.font().unwrap_or_default())
-            .style(move |theme, status| {
-                let common = base_tree.get(status);
+    fn with_style(self, style: CommonStyle) -> Self {
+        self.padding(style.padding())
+            .width(style.width())
+            .size(style.text_size())
+            .line_height(style.line_height())
+            .align_x(style.align_x())
+            .font(style.font().unwrap_or_default())
+            .style(move |theme, _| {
                 let palette = theme.palette();
 
                 iced::widget::text_input::Style {
-                    background: common.background().unwrap_or(palette.background.into()),
-                    border: common.border(),
-                    icon: common.color().unwrap_or(palette.text),
-                    placeholder: common.color().unwrap_or(palette.text).scale_alpha(0.6),
-                    value: common.color().unwrap_or(palette.text),
-                    selection: common.highlight().unwrap_or(palette.primary),
+                    background: style.background().unwrap_or(palette.background.into()),
+                    border: style.border(),
+                    icon: style.color().unwrap_or(palette.text),
+                    placeholder: style.color().unwrap_or(palette.text).scale_alpha(0.6),
+                    value: style.color().unwrap_or(palette.text),
+                    selection: style.highlight().unwrap_or(palette.primary),
                 }
             })
     }
 }
 
 impl<'a, Msg> WithStyle for iced::widget::Scrollable<'a, Msg> {
-    const BASE_KEY: &'static str = "scroll";
-
-    fn with_style(self, style: Rc<StyleTree>) -> Self {
-        let base_tree = Self::base_tree(&style);
-        let common = base_tree.style();
-
-        self.width(common.width())
-            .height(common.height())
+    fn with_style(self, style: CommonStyle) -> Self {
+        self.width(style.width())
+            .height(style.height())
             .style(move |theme, status| {
-                let status_tree = StyleTree::subtree(&base_tree, status);
-                let common = status_tree.style();
-                let gap = status_tree.get("gap");
-
                 let mut scrollable = iced::widget::scrollable::default(theme, status);
 
                 scrollable.container = iced::widget::container::Style {
-                    text_color: common.color(),
-                    background: common.background(),
-                    border: common.border(),
+                    text_color: style.color(),
+                    background: style.background(),
+                    border: style.border(),
                     ..Default::default()
                 };
-                scrollable.horizontal_rail =
-                    scrollable.horizontal_rail.with_style(status_tree.clone());
-                scrollable.vertical_rail = scrollable.vertical_rail.with_style(status_tree);
-                scrollable.gap = gap.background();
+                scrollable.horizontal_rail = scrollable.horizontal_rail.with_style(style);
+                scrollable.vertical_rail = scrollable.vertical_rail.with_style(style);
+                scrollable.gap = style.background();
 
                 scrollable
             })
@@ -191,81 +101,55 @@ impl<'a, Msg> WithStyle for iced::widget::Scrollable<'a, Msg> {
 }
 
 impl WithStyle for iced::widget::scrollable::Rail {
-    const BASE_KEY: &'static str = "rail";
-
-    fn with_style(mut self, style: Rc<StyleTree>) -> Self {
-        let base_tree = Self::base_tree(&style);
-        let common = base_tree.style();
-
-        self.background = common.background();
-        self.border = common.border();
-        self.scroller = self.scroller.with_style(base_tree);
+    fn with_style(mut self, style: CommonStyle) -> Self {
+        self.background = style.background();
+        self.border = style.border();
+        self.scroller = self.scroller.with_style(style);
 
         self
     }
 }
 
 impl WithStyle for iced::widget::scrollable::Scroller {
-    const BASE_KEY: &'static str = "scroller";
-
-    fn with_style(mut self, style: Rc<StyleTree>) -> Self {
-        let base_tree = Self::base_tree(&style);
-        let common = base_tree.style();
-
-        self.background = common.background().unwrap_or(self.background);
-        self.border = common.border();
+    fn with_style(mut self, style: CommonStyle) -> Self {
+        self.background = style.background().unwrap_or(self.background);
+        self.border = style.border();
 
         self
     }
 }
 
 impl WithStyle for iced::widget::Image {
-    const BASE_KEY: &'static str = "image";
-
-    fn with_style(self, style: Rc<StyleTree>) -> Self {
-        let common = style.get(Self::BASE_KEY);
-
-        self.border_radius(common.border().radius)
-            .width(common.width())
-            .height(common.height())
-            .opacity(common.opacity())
+    fn with_style(self, style: CommonStyle) -> Self {
+        self.border_radius(style.border().radius)
+            .width(style.width())
+            .height(style.height())
+            .opacity(style.opacity())
     }
 }
 
 impl<'a, Msg> WithStyle for iced::widget::Column<'a, Msg> {
-    const BASE_KEY: &'static str = "column";
-
-    fn with_style(self, style: Rc<StyleTree>) -> Self {
-        let common = Self::base_tree(&style).style();
-
-        self.align_x(common.align_x())
-            .width(common.width())
-            .height(common.height())
-            .padding(common.padding())
-            .spacing(common.spacing())
+    fn with_style(self, style: CommonStyle) -> Self {
+        self.align_x(style.align_x())
+            .width(style.width())
+            .height(style.height())
+            .padding(style.padding())
+            .spacing(style.spacing())
     }
 }
 
 impl<'a, Msg> WithStyle for iced::widget::Row<'a, Msg> {
-    const BASE_KEY: &'static str = "row";
-
-    fn with_style(self, style: Rc<StyleTree>) -> Self {
-        let common = Self::base_tree(&style).style();
-
-        self.align_y(common.align_y())
-            .width(common.width())
-            .height(common.height())
-            .padding(common.padding())
-            .spacing(common.spacing())
+    fn with_style(self, style: CommonStyle) -> Self {
+        self.align_y(style.align_y())
+            .width(style.width())
+            .height(style.height())
+            .padding(style.padding())
+            .spacing(style.spacing())
     }
 }
 
 impl<'a, Msg> WithStyle for iced::widget::Stack<'a, Msg> {
-    const BASE_KEY: &'static str = "stack";
-
-    fn with_style(self, style: Rc<StyleTree>) -> Self {
-        let common = Self::base_tree(&style).style();
-
-        self.width(common.width()).height(common.height())
+    fn with_style(self, style: CommonStyle) -> Self {
+        self.width(style.width()).height(style.height())
     }
 }

@@ -1,49 +1,5 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Palette {
-    pub background: Color,
-    pub text: Color,
-    pub primary: Color,
-    pub success: Color,
-    pub warning: Color,
-    pub danger: Color,
-}
-
-impl Palette {
-    pub fn dark() -> Self {
-        Self {
-            background: Color::Hex(0x202225FF),
-            text: Color::Hex(0xEEEEEEFF),
-            primary: Color::Hex(0x5865F2FF),
-            success: Color::Hex(0x43B581FF),
-            warning: Color::Hex(0xFAA61AFF),
-            danger: Color::Hex(0xF04747FF),
-        }
-    }
-}
-
-impl From<Palette> for iced::theme::Palette {
-    fn from(value: Palette) -> Self {
-        let Palette {
-            background,
-            text,
-            primary,
-            success,
-            warning,
-            danger,
-        } = value;
-        iced::theme::Palette {
-            background: background.into(),
-            text: text.into(),
-            primary: primary.into(),
-            success: success.into(),
-            warning: warning.into(),
-            danger: danger.into(),
-        }
-    }
-}
-
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum Color {

@@ -1,5 +1,4 @@
 use crate::{
-    elemental::SignalSender,
     language::{
         Library,
         libraries::stdlib::{
@@ -9,6 +8,7 @@ use crate::{
             tasks::task_functions,
         },
     },
+    runner::SignalSender,
 };
 
 mod basic;

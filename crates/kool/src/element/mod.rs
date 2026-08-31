@@ -1,9 +1,7 @@
-use std::rc::Rc;
-
 use crate::{
-    elemental::ElementalMessage,
     language::{Function, Library},
-    style::StyleTree,
+    runner::WidgetMessage,
+    style::CommonStyle,
 };
 
 mod button;
@@ -27,10 +25,10 @@ pub mod kool {
     pub use super::text::Text;
 }
 
-/// The context in which an element is buidl through `KoolBuilder`.
+/// The context in which an element is build.
 #[derive(Clone, Debug)]
 pub struct BuildContext {
-    pub style: Rc<StyleTree>,
+    pub default_style: CommonStyle,
 }
 
 /// Defines the basic behaviour of a custom element.
@@ -62,7 +60,7 @@ pub enum KoolElement {
 }
 
 impl KoolElement {
-    pub fn build<'a>(&self, context: &BuildContext) -> iced::Element<'a, ElementalMessage> {
+    pub fn build<'a>(&self, context: &BuildContext) -> iced::Element<'a, WidgetMessage> {
         match self {
             KoolElement::Error(error) => error.build(context).into(),
             KoolElement::Text(text) => text.build(context).into(),

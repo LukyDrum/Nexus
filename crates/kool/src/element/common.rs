@@ -1,12 +1,11 @@
 use std::{
     collections::HashMap,
     fmt::{Display, Write},
-    rc::Rc,
 };
 
 use crate::{
     language::{FunctionParams, SharedEnvironment, Value},
-    style::{CommonStyle, StyleKey, StyleTree, WithStyle, WithStyleKey, WithStyleOverride},
+    style::CommonStyle,
     utils::CloneInner,
 };
 
@@ -46,43 +45,11 @@ macro_rules! get_var_or_elem_error {
     }};
 }
 
-pub(super) fn build_with_style<Widget>(
-    widget: Widget,
-    tree: Rc<StyleTree>,
-    key: StyleKey,
-    style_override: Option<CommonStyle>,
-) -> Widget
-where
-    Widget: WithStyle + WithStyleKey + WithStyleOverride,
-{
-    let mut final_tree = tree;
-
-    if !key.is_empty() {
-        let id_tree = StyleTree::subtree(&final_tree, key);
-        let base_tree = Widget::base_tree(&final_tree);
-
-        let mut adhoc_tree = StyleTree::default();
-        adhoc_tree.set_style(base_tree.style().inherit(&final_tree.style()));
-        adhoc_tree.nest(Widget::BASE_KEY, id_tree);
-
-        final_tree = Rc::new(adhoc_tree);
-    }
-
-    if let Some(override_style) = style_override {
-        let base_tree = Widget::base_tree(&final_tree);
-        let merged_style = override_style.inherit(&base_tree.style());
-
-        let mut adhoc_tree = final_tree.clone_inner();
-
-        let mut overridden_base_tree = base_tree.clone_inner();
-        overridden_base_tree.set_style(merged_style);
-
-        adhoc_tree.nest(Widget::BASE_KEY, Rc::new(overridden_base_tree));
-
-        final_tree = Rc::new(adhoc_tree);
-    }
-
-    widget.with_style(final_tree)
+pub(super) fn merge_with_default_style(
+    style: Option<CommonStyle>,
+    default: CommonStyle,
+) -> CommonStyle {
+    style.map_or(default, |style| style.merge(&default))
 }
 
 pub(super) fn get_style_from_environment(environment: &SharedEnvironment) -> Option<CommonStyle> {

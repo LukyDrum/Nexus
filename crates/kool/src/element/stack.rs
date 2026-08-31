@@ -3,15 +3,15 @@ use crate::{
     element::{
         BuildContext, Element,
         common::{
-            CONTENT_PARAM, KEY_PARAM, build_with_style, element_base_params,
-            get_style_from_environment,
+            CONTENT_PARAM, KEY_PARAM, element_base_params, get_style_from_environment,
+            merge_with_default_style,
         },
         kool::Error,
     },
-    elemental::ElementalMessage,
     get_var_or_elem_error,
     language::{Function, FunctionCode, SharedEnvironment, Value},
-    style::{CommonStyle, StyleKey},
+    runner::WidgetMessage,
+    style::{CommonStyle, WithStyle},
     utils::CloneInner,
 };
 
@@ -23,16 +23,15 @@ pub struct Stack {
 }
 
 impl<'a> Element<'a> for Stack {
-    type IcedElement = iced::widget::Stack<'a, ElementalMessage>;
+    type IcedElement = iced::widget::Stack<'a, WidgetMessage>;
 
     fn build(&self, context: &BuildContext) -> Self::IcedElement {
-        let key = StyleKey::new(self.key.clone());
-        let style = context.style.clone();
-
         let children = self.content.iter().map(|child| child.build(context));
         let widget = iced::widget::Stack::new().extend(children);
 
-        build_with_style(widget, style, key, self.style)
+        let style = merge_with_default_style(self.style, context.default_style);
+
+        widget.with_style(style)
     }
 
     fn kool_function() -> (&'static str, Function) {

@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
-use crate::element::common::{CONTENT_PARAM, build_with_style, get_style_from_environment};
+use crate::element::common::{CONTENT_PARAM, get_style_from_environment, merge_with_default_style};
 
 use crate::language::SharedEnvironment;
-use crate::style::CommonStyle;
+use crate::runner::WidgetMessage;
+use crate::style::{CommonStyle, WithStyle};
 use crate::utils::CloneInner;
 use crate::{
     KoolElement,
@@ -11,10 +12,8 @@ use crate::{
         BuildContext, Element,
         common::{KEY_PARAM, element_base_params},
     },
-    elemental::ElementalMessage,
     get_var_or_elem_error,
     language::{Function, FunctionCode, Value},
-    style::StyleKey,
 };
 
 #[derive(Clone, Debug)]
@@ -25,15 +24,13 @@ pub struct Container {
 }
 
 impl<'a> Element<'a> for Container {
-    type IcedElement = iced::widget::Container<'a, ElementalMessage>;
+    type IcedElement = iced::widget::Container<'a, WidgetMessage>;
 
     fn build(&self, context: &BuildContext) -> Self::IcedElement {
-        let key = StyleKey::new(self.key.clone());
-        let style = context.style.clone();
-
         let widget = iced::widget::Container::new(self.content.build(context));
+        let style = merge_with_default_style(self.style, context.default_style);
 
-        build_with_style(widget, style, key, self.style)
+        widget.with_style(style)
     }
 
     fn kool_function() -> (&'static str, Function) {

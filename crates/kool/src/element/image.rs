@@ -3,13 +3,13 @@ use crate::{
     element::{
         BuildContext, Element,
         common::{
-            CONTENT_PARAM, KEY_PARAM, build_with_style, element_base_params,
-            get_style_from_environment,
+            CONTENT_PARAM, KEY_PARAM, element_base_params, get_style_from_environment,
+            merge_with_default_style,
         },
     },
     get_var_or_elem_error,
     language::{Function, FunctionCode, SharedEnvironment, Value},
-    style::{CommonStyle, StyleKey},
+    style::{CommonStyle, WithStyle},
     utils::CloneInner,
 };
 
@@ -24,12 +24,10 @@ impl<'a> Element<'a> for Image {
     type IcedElement = iced::widget::Image;
 
     fn build(&self, context: &BuildContext) -> Self::IcedElement {
-        let key = StyleKey::new(self.key.clone());
-        let style = context.style.clone();
-
         let widget = iced::widget::Image::new(&self.file);
+        let style = merge_with_default_style(self.style, context.default_style);
 
-        build_with_style(widget, style, key, self.style)
+        widget.with_style(style)
     }
 
     fn kool_function() -> (&'static str, Function) {

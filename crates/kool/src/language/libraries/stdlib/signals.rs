@@ -1,6 +1,6 @@
 use crate::{
-    elemental::{Signal, SignalSender},
     language::{Function, FunctionCode, FunctionParams, Library, SharedEnvironment, Value},
+    runner::{Signal, SignalSender},
 };
 
 pub(super) fn signals_functions(signal_sender: SignalSender) -> Library {
@@ -10,7 +10,7 @@ pub(super) fn signals_functions(signal_sender: SignalSender) -> Library {
 fn refresh_function(signal_sender: SignalSender) -> Function {
     let params = FunctionParams::default();
     let refresh_impl = move |_environment: &SharedEnvironment| -> Value {
-        let _ = signal_sender.send(Signal::Refresh);
+        let _ = signal_sender.unbounded_send(Signal::Refresh);
 
         Value::Null
     };

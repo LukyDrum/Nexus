@@ -10,25 +10,9 @@ use crate::style::Color;
 static FONT_CACHE: LazyLock<Mutex<HashSet<&'static str>>> =
     LazyLock::new(|| Mutex::new(HashSet::new()));
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
-#[serde(default)]
-pub struct CommonStyle {
-    #[serde(flatten)]
-    inheritable: InheritableStyle,
-
-    width: Length,
-    height: Length,
-
-    border: Border,
-    /// Going: TL, TR, BR, BL
-    padding: [f32; 4],
-
-    spacing: f32,
-}
-
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
 #[serde(default)]
-struct InheritableStyle {
+pub struct CommonStyle {
     background: Option<Color>,
     color: Option<Color>,
     highlight: Option<Color>,
@@ -37,8 +21,17 @@ struct InheritableStyle {
     font: Option<FontName>,
     text_size: Option<f32>,
     line_height: Option<f32>,
+
     align_x: Option<Align>,
     align_y: Option<Align>,
+    spacing: Option<f32>,
+
+    width: Option<Length>,
+    height: Option<Length>,
+
+    border: Option<Border>,
+    /// Going: top, right, bottom, left
+    padding: Option<[f32; 4]>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
@@ -63,80 +56,55 @@ impl<'de> Deserialize<'de> for FontName {
     }
 }
 
-impl Default for CommonStyle {
-    fn default() -> Self {
-        Self {
-            inheritable: InheritableStyle::default(),
-
-            width: Length::Fill,
-            height: Length::Fill,
-
-            border: Border::default(),
-            padding: [0.0; 4],
-
-            spacing: 0.0,
-        }
-    }
-}
-
 impl CommonStyle {
     pub const DEFAULT_TEXT_SIZE: f32 = 17.0;
 
     pub fn background(&self) -> Option<iced::Background> {
-        self.inheritable
-            .background
+        self.background
             .map(|background| iced::Background::Color(background.into()))
     }
 
     pub fn color(&self) -> Option<iced::Color> {
-        self.inheritable.color.map(Into::into)
+        self.color.map(Into::into)
     }
 
     pub fn highlight(&self) -> Option<iced::Color> {
-        self.inheritable.highlight.map(Into::into)
+        self.highlight.map(Into::into)
     }
 
     pub fn opacity(&self) -> f32 {
-        self.inheritable.opacity.unwrap_or(1.0)
+        self.opacity.unwrap_or(1.0)
     }
 
     pub fn font(&self) -> Option<iced::font::Font> {
-        self.inheritable
-            .font
+        self.font
             .map(|FontName(name)| iced::font::Font::with_name(name))
     }
 
     pub fn text_size(&self) -> f32 {
-        self.inheritable
-            .text_size
-            .unwrap_or(Self::DEFAULT_TEXT_SIZE)
+        self.text_size.unwrap_or(Self::DEFAULT_TEXT_SIZE)
     }
 
     pub fn line_height(&self) -> iced::widget::text::LineHeight {
-        self.inheritable
-            .line_height
+        self.line_height
             .map(|line_height| iced::widget::text::LineHeight::Absolute(line_height.into()))
             .unwrap_or_default()
     }
 
     pub fn align_x(&self) -> iced::Alignment {
-        self.inheritable
-            .align_x
-            .map_or(iced::Alignment::Start, Into::into)
+        self.align_x.map_or(iced::Alignment::Start, Into::into)
     }
 
     pub fn align_y(&self) -> iced::Alignment {
-        self.inheritable
-            .align_y
-            .map_or(iced::Alignment::Start, Into::into)
+        self.align_y.map_or(iced::Alignment::Start, Into::into)
     }
 
     pub fn width(&self) -> iced::Length {
-        self.width.into()
+        self.width.unwrap_or_default().into()
     }
 
     pub fn height(&self) -> iced::Length {
-        self.height.into()
+        self.height.unwrap_or_default().into()
     }
 
     pub fn border(&self) -> iced::Border {
@@ -144,7 +112,7 @@ impl CommonStyle {
             color,
             width,
             radius,
-        } = self.border;
+        } = self.border.unwrap_or_default();
         let [top_left, top_right, bottom_right, bottom_left] = radius;
 
         iced::Border::default()
@@ -159,7 +127,7 @@ impl CommonStyle {
     }
 
     pub fn padding(&self) -> iced::Padding {
-        let [top, right, bottom, left] = self.padding;
+        let [top, right, bottom, left] = self.padding.unwrap_or_default();
 
         iced::Padding {
             top,
@@ -170,29 +138,26 @@ impl CommonStyle {
     }
 
     pub fn spacing(&self) -> f32 {
-        self.spacing
+        self.spacing.unwrap_or_default()
     }
 
-    pub fn inherit(&self, parent: &Self) -> Self {
+    /// Fills missing properties with values from `other`.
+    pub fn merge(&self, other: &Self) -> Self {
         Self {
-            inheritable: self.inheritable.inherit(&parent.inheritable),
-            ..*self
-        }
-    }
-}
-
-impl InheritableStyle {
-    pub fn inherit(&self, parent: &Self) -> Self {
-        Self {
-            background: self.background.or(parent.background),
-            color: self.color.or(parent.color),
-            highlight: self.highlight.or(parent.highlight),
-            opacity: self.opacity.or(parent.opacity),
-            font: self.font.or(parent.font),
-            text_size: self.text_size.or(parent.text_size),
-            line_height: self.line_height.or(parent.line_height),
-            align_x: self.align_x.or(parent.align_x),
-            align_y: self.align_y.or(parent.align_y),
+            background: self.background.or(other.background),
+            color: self.color.or(other.color),
+            highlight: self.highlight.or(other.highlight),
+            opacity: self.opacity.or(other.opacity),
+            font: self.font.or(other.font),
+            text_size: self.text_size.or(other.text_size),
+            line_height: self.line_height.or(other.line_height),
+            align_x: self.align_x.or(other.align_x),
+            align_y: self.align_y.or(other.align_y),
+            border: self.border.or(other.border),
+            width: self.width.or(other.width),
+            height: self.height.or(other.height),
+            padding: self.padding.or(other.padding),
+            spacing: self.spacing.or(other.spacing),
         }
     }
 }

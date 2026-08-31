@@ -12,7 +12,7 @@ fn spawn_function() -> Function {
     let params = FunctionParams::default().with_tail(TAIL_PARAM);
     let spawn_impl = |environment: &SharedEnvironment| -> Value {
         if let Some(Value::Function(func)) = environment.get_variable(TAIL_PARAM) {
-            tokio::task::spawn(async move {
+            std::thread::spawn(move || {
                 let _ = func.call_with_default_args();
             });
         }
