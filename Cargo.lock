@@ -2096,7 +2096,6 @@ dependencies = [
  "iced",
  "iced_exwlshell",
  "koolctl",
- "serde",
  "strum",
  "thiserror 2.0.18",
  "toml",

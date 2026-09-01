@@ -2,6 +2,6 @@ mod color;
 mod common;
 mod with;
 
-pub use color::Color;
+pub use color::{Color, ParseHexError};
 pub use common::{Border, CommonStyle};
 pub use with::WithStyle;

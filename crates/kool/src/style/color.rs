@@ -1,34 +1,21 @@
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use std::str::FromStr;
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
-#[serde(untagged)]
+use crate::language::Value;
+
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Color {
     /// Like `(255, 255, 255, 255)`
-    RgbaU8(u8, u8, u8, #[serde(default = "default_alpha_u8")] u8),
+    RgbaU8(u8, u8, u8, u8),
     /// Like `(1.0, 1.0, 1.0, 1.0)`
-    RgbaF32(f32, f32, f32, #[serde(default = "default_alpha_f32")] f32),
+    RgbaF32(f32, f32, f32, f32),
     /// Like `(0xFFFFFFFF)`
-    Hex(
-        #[serde(
-            serialize_with = "serialize_hex_u32",
-            deserialize_with = "deserialize_hex_u32"
-        )]
-        u32,
-    ),
+    Hex(u32),
 }
 
 impl Default for Color {
     fn default() -> Self {
         Self::Hex(0x000000FF)
     }
-}
-
-fn default_alpha_u8() -> u8 {
-    255
-}
-
-fn default_alpha_f32() -> f32 {
-    1.0
 }
 
 impl From<Color> for iced::Color {
@@ -54,25 +41,41 @@ impl From<Color> for iced::Background {
     }
 }
 
-pub(super) fn serialize_hex_u32<S>(x: &u32, s: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    s.serialize_str(&format!("#{:x}", x))
+pub struct ParseHexError;
+
+impl FromStr for Color {
+    type Err = ParseHexError;
+
+    fn from_str(string: &str) -> Result<Self, Self::Err> {
+        let string = string.strip_prefix("#").unwrap_or(string);
+        let value = u32::from_str_radix(string, 16).map_err(|_| ParseHexError)?;
+
+        // Treat RGB values as RGBA values with A = FF
+        if string.len() > 6 {
+            Ok(Self::Hex(value))
+        } else {
+            Ok(Self::Hex(value << 2 | 0xFF))
+        }
+    }
 }
 
-pub(super) fn deserialize_hex_u32<'de, D>(d: D) -> Result<u32, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let string = String::deserialize(d)?;
-    let string = string.strip_prefix("#").unwrap_or(&string);
-    let value = u32::from_str_radix(string, 16).map_err(serde::de::Error::custom)?;
-
-    // Treat RGB values as RGBA values with A = FF
-    if string.len() > 6 {
-        Ok(value)
-    } else {
-        Ok(value << 2 | 0xFF)
+impl From<&Value> for Color {
+    fn from(value: &Value) -> Self {
+        match value {
+            Value::String(color) => Color::from_str(color).unwrap_or_default(),
+            Value::Array(rgba) => {
+                let rgba = rgba.read().expect("Lock poisoned");
+                if let Some(Value::Int(r)) = rgba.first()
+                    && let Some(Value::Int(g)) = rgba.get(1)
+                    && let Some(Value::Int(b)) = rgba.get(2)
+                    && let Value::Int(a) = rgba.get(3).unwrap_or(&Value::Int(255))
+                {
+                    Color::RgbaU8(*r as u8, *g as u8, *b as u8, *a as u8)
+                } else {
+                    Color::default()
+                }
+            }
+            _ => Color::default(),
+        }
     }
 }

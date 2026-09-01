@@ -5,13 +5,11 @@ use iced_exwlshell::reexport::{Anchor as IcedShellAnchor, Layer as IcedShellLaye
 
 use iced_exwlshell::settings::LayerShellSettings;
 
-use serde::{Deserialize, Serialize};
 use strum::EnumString;
 
 use crate::language::Value;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(default)]
+#[derive(Clone, Debug)]
 pub struct WidgetSettings {
     pub name: Option<String>,
     pub anchors: Vec<Anchor>,
@@ -164,7 +162,7 @@ impl From<Value> for WidgetSettings {
     }
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, EnumString)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, EnumString)]
 #[strum(ascii_case_insensitive)]
 pub enum Anchor {
     Top,
@@ -184,7 +182,7 @@ impl From<Anchor> for IcedShellAnchor {
     }
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, EnumString)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, EnumString)]
 #[strum(ascii_case_insensitive)]
 pub enum Layer {
     Background,
@@ -204,7 +202,7 @@ impl From<Layer> for IcedShellLayer {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, PartialEq, Eq, EnumString)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, EnumString)]
 #[strum(ascii_case_insensitive)]
 pub enum Rendering {
     Cpu,

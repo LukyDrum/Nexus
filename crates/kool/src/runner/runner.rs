@@ -4,13 +4,9 @@ use iced::{Subscription, Task, futures::StreamExt, window::Id as WindowId};
 use iced_exwlshell::settings::LayerShellSettings;
 use koolctl::ControlMessage;
 
-use crate::{
-    BuildContext,
-    language::Value,
-    runner::{
-        RunnerMessage, Signal, WidgetId, WidgetInstance, WidgetSettings, init_control_server,
-        init_signal_channel, take_control_receiver, take_signal_receiver,
-    },
+use crate::runner::{
+    RunnerMessage, Signal, WidgetId, WidgetInstance, WidgetSettings, init_control_server,
+    init_signal_channel, take_control_receiver, take_signal_receiver,
 };
 
 #[derive(Debug)]
@@ -31,6 +27,10 @@ impl KoolRunner {
             .settings(settings)
             .subscription(|_| {
                 Subscription::batch([Self::control_subscription(), Self::signal_subscription()])
+            })
+            .style(|_, _| iced::theme::Style {
+                background_color: iced::Color::TRANSPARENT,
+                text_color: iced::Color::BLACK,
             })
             .run()
     }
@@ -117,7 +117,7 @@ impl KoolRunner {
                     .get(&id)
                     .and_then(|window_id| self.instances.get_mut(window_id))
                 {
-                    widget.handle_message(message);
+                    widget.update(message);
                 }
             }
 
@@ -133,20 +133,10 @@ impl KoolRunner {
             return iced::widget::space().into();
         };
 
-        let Ok(Value::Element(element)) = instance.view_function.call_with_default_args() else {
-            return iced::widget::text("View function did not return an element").into();
-        };
-
-        let context = BuildContext {
-            default_style: Default::default(),
-        };
-
-        element
-            .build(&context)
-            .map(|message| RunnerMessage::Widget {
-                id: instance.id.clone(),
-                message,
-            })
+        instance.view().map(|message| RunnerMessage::Widget {
+            id: instance.id.clone(),
+            message,
+        })
     }
 
     fn update_settings_tasks(

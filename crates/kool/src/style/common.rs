@@ -1,17 +1,21 @@
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
+    str::FromStr,
     sync::{LazyLock, Mutex},
 };
 
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use strum::EnumString;
 
-use crate::style::Color;
+use crate::{
+    language::Value,
+    style::Color,
+    utils::{CloneInner, SimpleCase},
+};
 
 static FONT_CACHE: LazyLock<Mutex<HashSet<&'static str>>> =
     LazyLock::new(|| Mutex::new(HashSet::new()));
 
-#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
-#[serde(default)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct CommonStyle {
     background: Option<Color>,
     color: Option<Color>,
@@ -30,28 +34,24 @@ pub struct CommonStyle {
     height: Option<Length>,
 
     border: Option<Border>,
+
     /// Going: top, right, bottom, left
     padding: Option<[f32; 4]>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 struct FontName(&'static str);
 
-impl<'de> Deserialize<'de> for FontName {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let string = String::deserialize(deserializer)?;
-
+impl FontName {
+    pub fn new(string: String) -> Self {
         let mut cache = FONT_CACHE.lock().unwrap();
 
         if let Some(&static_str) = cache.get(string.as_str()) {
-            Ok(Self(static_str))
+            Self(static_str)
         } else {
             let leaked = string.leak();
             cache.insert(leaked);
-            Ok(Self(leaked))
+            Self(leaked)
         }
     }
 }
@@ -162,8 +162,7 @@ impl CommonStyle {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
-#[serde(default)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct Border {
     color: Color,
     width: f32,
@@ -171,50 +170,13 @@ pub struct Border {
     radius: [f32; 4],
 }
 
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, EnumString)]
+#[strum(ascii_case_insensitive)]
 pub enum Length {
     Shrink,
     #[default]
     Fill,
     Fixed(f32),
-}
-
-impl<'de> Deserialize<'de> for Length {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        #[derive(Deserialize)]
-        #[serde(untagged)]
-        enum Helper {
-            Keyword(String),
-            Fixed(f32),
-        }
-
-        match Helper::deserialize(deserializer)? {
-            Helper::Keyword(s) => match s.as_str() {
-                "Fill" => Ok(Length::Fill),
-                "Shrink" => Ok(Length::Shrink),
-                _ => Err(serde::de::Error::custom(format!(
-                    "expected 'Fill', 'Shrink', or a number, found '{s}'"
-                ))),
-            },
-            Helper::Fixed(n) => Ok(Length::Fixed(n)),
-        }
-    }
-}
-
-impl Serialize for Length {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        match self {
-            Length::Shrink => serializer.serialize_str("Shrink"),
-            Length::Fill => serializer.serialize_str("Fill"),
-            Length::Fixed(n) => serializer.serialize_f32(*n),
-        }
-    }
 }
 
 impl From<Length> for iced::Length {
@@ -227,7 +189,8 @@ impl From<Length> for iced::Length {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, EnumString)]
+#[strum(ascii_case_insensitive)]
 pub enum Align {
     #[default]
     Start,
@@ -252,5 +215,133 @@ impl From<Align> for iced::widget::text::Alignment {
             Align::Center => Self::Center,
             Align::End => Self::Right,
         }
+    }
+}
+
+impl From<Value> for CommonStyle {
+    fn from(value: Value) -> Self {
+        let mut style = CommonStyle::default();
+
+        let Value::HashMap(map) = value else {
+            return style;
+        };
+        let map = map.read().expect("Lock poisoned");
+        let map = map
+            .iter()
+            .filter_map(|(key, value)| {
+                if let Value::String(string) = key {
+                    Some((SimpleCase::new(string).to_string(), value))
+                } else {
+                    None
+                }
+            })
+            .collect::<HashMap<_, _>>();
+
+        if let Some(value) = map.get("background") {
+            style.background = Some(Color::from(*value));
+        }
+        if let Some(value) = map.get("color") {
+            style.color = Some(Color::from(*value));
+        }
+        if let Some(value) = map.get("highlight") {
+            style.highlight = Some(Color::from(*value));
+        }
+        if let Some(_opacity) = map.get("opacity") {
+            unimplemented!("opacity from float");
+        }
+
+        if let Some(Value::String(string)) = map.get("font") {
+            style.font = Some(FontName::new(string.clone_inner()));
+        }
+        if let Some(Value::Int(text_size)) = map.get("textsize") {
+            style.text_size = Some(*text_size as f32);
+        }
+        if let Some(Value::Int(line_height)) = map.get("lineheight") {
+            style.line_height = Some(*line_height as f32);
+        }
+
+        if let Some(align_x) = map.get("alignx").and_then(|align| {
+            if let Value::String(align) = align {
+                Align::from_str(align).ok()
+            } else {
+                None
+            }
+        }) {
+            style.align_x = Some(align_x);
+        }
+        if let Some(align_y) = map.get("aligny").and_then(|align| {
+            if let Value::String(align) = align {
+                Align::from_str(align).ok()
+            } else {
+                None
+            }
+        }) {
+            style.align_y = Some(align_y);
+        }
+        if let Some(Value::Int(spacing)) = map.get("spacing") {
+            style.spacing = Some(*spacing as f32);
+        }
+
+        if let Some(width) = map.get("width") {
+            match width {
+                Value::Int(width) => style.width = Some(Length::Fixed(*width as f32)),
+                Value::String(width) => style.width = Length::from_str(width).ok(),
+                _ => {}
+            }
+        }
+        if let Some(height) = map.get("height") {
+            match height {
+                Value::Int(height) => style.height = Some(Length::Fixed(*height as f32)),
+                Value::String(height) => style.height = Length::from_str(height).ok(),
+                _ => {}
+            }
+        }
+
+        if let Some(Value::HashMap(map)) = map.get("border") {
+            let map = map.read().expect("Lock poisoned");
+            let map = map
+                .iter()
+                .filter_map(|(key, value)| {
+                    if let Value::String(string) = key {
+                        Some((SimpleCase::new(string).to_string(), value))
+                    } else {
+                        None
+                    }
+                })
+                .collect::<HashMap<_, _>>();
+            let mut border = Border::default();
+
+            if let Some(value) = map.get("color") {
+                border.color = Color::from(*value);
+            }
+            if let Some(Value::Int(width)) = map.get("width") {
+                border.width = *width as f32;
+            }
+            if let Some(Value::Array(radius)) = map.get("radius") {
+                let radius = radius.read().expect("Lock poisoned");
+                if let Some(Value::Int(tl)) = radius.first()
+                    && let Some(Value::Int(tr)) = radius.get(1)
+                    && let Some(Value::Int(br)) = radius.get(2)
+                    && let Some(Value::Int(bl)) = radius.get(3)
+                {
+                    border.radius = [*tl as f32, *tr as f32, *br as f32, *bl as f32];
+                }
+            }
+
+            style.border = Some(border);
+        }
+
+        if let Some(Value::Array(padding)) = map.get("padding") {
+            let padding = padding.read().expect("Lock poisoned");
+            if let Some(Value::Int(top)) = padding.first()
+                && let Some(Value::Int(right)) = padding.get(1)
+                && let Some(Value::Int(bottom)) = padding.get(2)
+                && let Some(Value::Int(left)) = padding.get(3)
+            {
+                style.padding = Some([*top as f32, *right as f32, *bottom as f32, *left as f32]);
+            }
+        }
+
+        style
     }
 }

@@ -6,6 +6,7 @@ use std::{
 use thiserror::Error;
 
 use crate::{
+    BuildContext,
     language::{Function, FunctionError, SharedEnvironment, StatementExecutionError, Value},
     parsing::ScanAndParserError,
     root_environment,
@@ -14,6 +15,7 @@ use crate::{
 };
 
 const INIT_FUNCTION: &str = "init";
+const STYLE_FUNCTION: &str = "style";
 const VIEW_FUNCTION: &str = "view";
 
 /// A widget is identified by its script.
@@ -36,6 +38,7 @@ pub struct WidgetInstance {
     // We need to hold on to this
     pub _environment: SharedEnvironment,
     pub settings: WidgetSettings,
+    pub style_function: Arc<Function>,
     pub view_function: Arc<Function>,
 }
 
@@ -74,6 +77,13 @@ impl WidgetInstance {
         let Some(Value::Function(init_function)) = environment.get_variable(INIT_FUNCTION) else {
             return Err(WidgetError::MissingInit);
         };
+        let style_function = if let Some(Value::Function(style_function)) =
+            environment.get_variable(STYLE_FUNCTION)
+        {
+            style_function
+        } else {
+            Arc::new(Function::empty_function())
+        };
         let Some(Value::Function(view_function)) = environment.get_variable(VIEW_FUNCTION) else {
             return Err(WidgetError::MissingView);
         };
@@ -88,15 +98,31 @@ impl WidgetInstance {
             id,
             _environment: environment,
             settings,
+            style_function,
             view_function,
         })
     }
 
-    pub fn handle_message(&mut self, message: WidgetMessage) {
+    pub fn update(&mut self, message: WidgetMessage) {
         match message {
             WidgetMessage::Callback(function) => {
                 let _result = function.call_with_default_args();
             }
         }
+    }
+
+    pub fn view<'a>(&'a self) -> iced::Element<'a, WidgetMessage> {
+        let Ok(Value::Element(element)) = self.view_function.call_with_default_args() else {
+            return iced::widget::text("View function did not return an element").into();
+        };
+
+        let default_style = self
+            .style_function
+            .call_with_default_args()
+            .unwrap_or_default()
+            .into();
+        let context = BuildContext { default_style };
+
+        element.build(&context)
     }
 }
