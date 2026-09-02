@@ -101,8 +101,8 @@ impl Value {
         }
     }
 
-    pub fn new_string(string: String) -> Self {
-        Self::String(Arc::new(string))
+    pub fn new_string(string: impl Into<String>) -> Self {
+        Self::String(Arc::new(string.into()))
     }
 
     pub fn new_array(array: Vec<Value>) -> Self {
