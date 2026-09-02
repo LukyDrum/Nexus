@@ -518,10 +518,9 @@ fn term(
 fn unary(
     tokens: &mut Tokens<impl Iterator<Item = TokenWithMeta>>,
 ) -> Result<Expression, ParserError> {
-    if tokens
-        .peek()
-        .is_some_and(|TokenWithMeta { token, .. }| matches!(token, Token::Plus | Token::Minus))
-    {
+    if tokens.peek().is_some_and(|TokenWithMeta { token, .. }| {
+        matches!(token, Token::Plus | Token::Minus | Token::Bang)
+    }) {
         let Some(token) = tokens.next() else {
             return Err(ParserError::UnexpectedEof {
                 expected: "an operator".to_owned(),
