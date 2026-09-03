@@ -138,6 +138,7 @@ pub enum FunctionError {
     Execution(StatementExecutionError),
     InvalidParameter(String),
     NoTailParameter,
+    NoSingularParam,
 }
 
 impl FunctionCallArgs {
@@ -153,6 +154,25 @@ impl FunctionCallArgs {
     pub fn add_tail(&mut self, value: Value) -> Result<(), FunctionError> {
         let (_, tail) = self.tail.as_mut().ok_or(FunctionError::NoTailParameter)?;
         tail.push(value);
+
+        Ok(())
+    }
+
+    pub fn set_singular_arg(&mut self, value: Value) -> Result<(), FunctionError> {
+        let args_count = self.args.len() + if self.tail.is_some() { 1 } else { 0 };
+
+        if args_count != 1 {
+            return Err(FunctionError::NoSingularParam);
+        }
+
+        if let Some((_name, arg)) = self.args.iter_mut().next() {
+            *arg = value;
+        } else if let Some((_name, tail)) = &mut self.tail {
+            tail.clear();
+            tail.push(value);
+        } else {
+            unreachable!("Previous checks should cover all.");
+        }
 
         Ok(())
     }
