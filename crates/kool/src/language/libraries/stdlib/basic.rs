@@ -1,12 +1,18 @@
+use std::time::Duration;
+
 use chrono::{Datelike, Timelike};
 
 use crate::{
     language::{
-        Expression, Function, FunctionCode, FunctionParams, Library, Operator, SharedEnvironment,
-        Value,
+        DuplexChannel, Expression, Function, FunctionCode, FunctionParams, Library, Operator,
+        SharedEnvironment, Value,
     },
     utils::CloneInner,
 };
+
+const MILLIS_IN_SECONDS: u32 = 1000;
+const SECONDS_IN_MINUTE: u32 = 60;
+const MINUTES_IN_HOUR: u32 = 60;
 
 pub(super) fn basic_functions() -> Library {
     Library::from([
@@ -15,6 +21,7 @@ pub(super) fn basic_functions() -> Library {
         ("exec", exec_function()),
         ("date_str", date_str_function()),
         ("date", date_function()),
+        ("timeEvents", time_events_function()),
     ])
 }
 
@@ -178,29 +185,91 @@ fn date_str_function() -> Function {
 
 fn date_function() -> Function {
     let params = FunctionParams::default();
-    let date_impl = |_: &SharedEnvironment| -> Value {
-        let now = chrono::Local::now();
-        let date_obj_values = [
-            ("year", Value::Int(now.year() as i64)),
-            ("month", Value::Int(now.month() as i64)),
-            ("day", Value::Int(now.day() as i64)),
-            ("hour", Value::Int(now.hour() as i64)),
-            ("minute", Value::Int(now.minute() as i64)),
-            ("second", Value::Int(now.second() as i64)),
-            ("weekday", Value::new_string(now.weekday().to_string())),
-        ];
-
-        Value::new_hash_map(
-            date_obj_values
-                .into_iter()
-                .map(|(key, value)| (Value::new_string(key.to_owned()), value))
-                .collect(),
-        )
-    };
+    let date_impl = |_: &SharedEnvironment| -> Value { current_time_value() };
 
     Function {
         params,
         code: FunctionCode::new_host(date_impl),
         closure: None,
     }
+}
+
+/// Produces a time event on every whole second/minute/hour base on `onEvery` param.
+fn time_events_function() -> Function {
+    const ON_EVERY_PARAM: &str = "onEvery";
+
+    let params =
+        FunctionParams::default().with_param(ON_EVERY_PARAM, Some(Value::new_string("second")));
+    let time_events = |environment: &SharedEnvironment| -> Value {
+        let Some(Value::String(on_every)) = environment.get_variable(ON_EVERY_PARAM) else {
+            return Value::Null;
+        };
+        // Pre-check
+        match on_every.as_str() {
+            "second" | "minute" | "hour" => {}
+            _ => return Value::Null,
+        }
+
+        let channel = DuplexChannel::default();
+        let channel_value = Value::Channel(channel.clone());
+
+        std::thread::spawn(move || {
+            // We want millisecond precision here
+            loop {
+                let now = chrono::Local::now();
+
+                let millis_to_sleep = match on_every.as_str() {
+                    "second" => {
+                        let millis = now.timestamp_subsec_millis();
+                        MILLIS_IN_SECONDS.saturating_sub(millis)
+                    }
+                    "minute" => {
+                        let millis =
+                            now.second() * MILLIS_IN_SECONDS + now.timestamp_subsec_millis();
+                        (SECONDS_IN_MINUTE * MILLIS_IN_SECONDS).saturating_sub(millis)
+                    }
+                    "hour" => {
+                        let millis = now.minute() * SECONDS_IN_MINUTE * MILLIS_IN_SECONDS
+                            + now.second() * MILLIS_IN_SECONDS
+                            + now.timestamp_subsec_millis();
+                        (MINUTES_IN_HOUR * SECONDS_IN_MINUTE * MILLIS_IN_SECONDS)
+                            .saturating_sub(millis)
+                    }
+                    _ => unreachable!("We checked for these variants beforehand."),
+                };
+
+                std::thread::sleep(Duration::from_millis(millis_to_sleep.into()));
+
+                let _ = channel.send(current_time_value());
+            }
+        });
+
+        channel_value
+    };
+
+    Function {
+        params,
+        code: FunctionCode::new_host(time_events),
+        closure: None,
+    }
+}
+
+fn current_time_value() -> Value {
+    let now = chrono::Local::now();
+    let date_obj_values = [
+        ("year", Value::Int(now.year() as i64)),
+        ("month", Value::Int(now.month() as i64)),
+        ("day", Value::Int(now.day() as i64)),
+        ("hour", Value::Int(now.hour() as i64)),
+        ("minute", Value::Int(now.minute() as i64)),
+        ("second", Value::Int(now.second() as i64)),
+        ("weekday", Value::new_string(now.weekday().to_string())),
+    ];
+
+    Value::new_hash_map(
+        date_obj_values
+            .into_iter()
+            .map(|(key, value)| (Value::new_string(key.to_owned()), value))
+            .collect(),
+    )
 }
