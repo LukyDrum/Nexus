@@ -1,10 +1,16 @@
 use std::time::Duration;
 
+use crossbeam::channel::Receiver;
+use iced::futures::{StreamExt, executor::block_on};
 use mpris::{PlaybackStatus, Player, PlayerFinder};
+use zbus::{Connection, MatchRule, fdo::DBusProxy};
 
-use crate::language::{Function, FunctionCode, FunctionParams, Library, SharedEnvironment, Value};
+use crate::language::{
+    DuplexChannel, Function, FunctionCode, FunctionParams, Library, SharedEnvironment, Value,
+};
 
 const MICROS_IN_SECOND: i64 = 1_000_000;
+const MPRIS_PLAYER_PREFIX: &str = "org.mpris.MediaPlayer2.";
 
 pub(super) fn mpris_library() -> Library {
     Library::from([
@@ -15,7 +21,7 @@ pub(super) fn mpris_library() -> Library {
         ("playPause", play_pause_function()),
         ("next", next_function()),
         ("previous", previous_function()),
-        ("onChange", on_change_function()),
+        ("events", events_function()),
     ])
 }
 
@@ -152,51 +158,112 @@ fn previous_function() -> Function {
     }
 }
 
-fn on_change_function() -> Function {
-    const TAIL_PARAM: &str = "tail";
+/// Returns a Channel to which information about the track will be send every time a track/track-state changes.
+fn events_function() -> Function {
+    let params = FunctionParams::default();
+    let events_impl = |_environment: &SharedEnvironment| -> Value {
+        let events_channel = DuplexChannel::default();
+        let events_channel_value = Value::Channel(events_channel.clone());
 
-    let params = FunctionParams::default().with_tail(TAIL_PARAM);
-    let on_change_impl = |environment: &SharedEnvironment| -> Value {
-        let Some(Value::Function(callback)) = environment.get_variable(TAIL_PARAM) else {
-            return Value::Null;
-        };
+        let _handle = std::thread::spawn(move || {
+            let player_change_receiver = watch_player_changes();
 
-        std::thread::spawn(move || {
-            loop {
-                let Some(player) = active_player() else {
-                    // Lets wait a little and try again
-                    std::thread::sleep(Duration::from_secs(1));
-                    continue;
-                };
-                let Ok(mut events) = player.events() else {
-                    return;
-                };
+            if let Some(player) = active_player() {
+                let _ = events_channel.send(collect_track_info(&player).unwrap_or_default());
+            }
 
-                let call_callback = || {
-                    let track_info = collect_track_info(&player).unwrap_or_default();
-
-                    let mut args = callback.default_args();
-                    let _ = args.set_singular_arg(track_info);
-
-                    let _ = callback.call(args);
-                };
-
-                // Init before the first event
-                call_callback();
-                while let Some(Ok(_event)) = events.next() {
-                    call_callback();
+            while let Ok(change) = player_change_receiver.recv() {
+                match change {
+                    PlayerChange::Change => {
+                        if let Some(player) = active_player() {
+                            let _ = events_channel
+                                .send(collect_track_info(&player).unwrap_or_default());
+                        } else {
+                            let _ = events_channel.send(Value::new_hash_map(Default::default()));
+                        }
+                    }
+                    PlayerChange::Error => {
+                        std::thread::sleep(Duration::from_secs(1));
+                    }
                 }
             }
         });
 
-        Value::Null
+        events_channel_value
     };
 
     Function {
         params,
-        code: FunctionCode::new_host(on_change_impl),
+        code: FunctionCode::new_host(events_impl),
         closure: None,
     }
+}
+
+#[derive(Clone, Copy, Debug)]
+enum PlayerChange {
+    Change,
+    Error,
+}
+
+fn watch_player_changes() -> Receiver<PlayerChange> {
+    let (sender, receiver) = crossbeam::channel::unbounded();
+
+    // Watch for player being created/removed
+    let sender_names = sender.clone();
+    let _handle = std::thread::spawn(move || {
+        block_on(async {
+            let Ok(conn) = Connection::session().await else {
+                let _ = sender_names.send(PlayerChange::Error);
+                return;
+            };
+            let Ok(dbus) = DBusProxy::new(&conn).await else {
+                return;
+            };
+            let Ok(mut stream) = dbus.receive_name_owner_changed().await else {
+                return;
+            };
+
+            while let Some(signal) = stream.next().await {
+                if let Ok(args) = signal.args() {
+                    let name = args.name();
+                    if name.starts_with(MPRIS_PLAYER_PREFIX) {
+                        let _ = sender_names.send(PlayerChange::Change);
+                    }
+                }
+            }
+        })
+    });
+
+    // Watch for all changes in properties
+    let sender_props = sender.clone();
+    let _handle = std::thread::spawn(move || {
+        block_on(async {
+            let Ok(conn) = Connection::session().await else {
+                return;
+            };
+
+            let rule = MatchRule::builder()
+                .msg_type(zbus::message::Type::Signal)
+                .interface("org.freedesktop.DBus.Properties")
+                .expect("Valid interface")
+                .member("PropertiesChanged")
+                .expect("Valid member")
+                .path("/org/mpris/MediaPlayer2")
+                .expect("Valid path")
+                .build();
+
+            let Ok(mut stream) = zbus::MessageStream::for_match_rule(rule, &conn, None).await
+            else {
+                return;
+            };
+
+            while let Some(_msg) = stream.next().await {
+                let _ = sender_props.send(PlayerChange::Change);
+            }
+        })
+    });
+
+    receiver
 }
 
 fn active_player() -> Option<Player> {

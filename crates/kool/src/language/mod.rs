@@ -3,6 +3,7 @@
     reason = "we only hash values without interior mutability"
 )]
 
+mod channel;
 mod environment;
 mod expression;
 mod function;
@@ -12,6 +13,7 @@ mod library;
 mod statement;
 mod value;
 
+pub use channel::DuplexChannel;
 pub use environment::{Environment, SharedEnvironment};
 pub use expression::{EvaluationError, Expression, Operator};
 pub use function::{Function, FunctionCode, FunctionError, FunctionParams};

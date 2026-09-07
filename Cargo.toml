@@ -10,6 +10,7 @@ edition = "2024"
 anyhow = "1.0.102"
 chrono = "0.4.45"
 clap = { version = "4.5.60", features = ["derive"] }
+crossbeam = "0.8.5"
 fuzzy-matcher = "0.3.7"
 iced = { version = "0.14.0", features = ["advanced", "image", "tokio"] }
 iced_exwlshell = "0.19.1"
@@ -22,3 +23,4 @@ thiserror = "2.0.18"
 tokio = { version = "1.49.0", features = ["full"] }
 toml = "1.1.2"
 xdg = "3.0.0"
+zbus = "5.19.0"

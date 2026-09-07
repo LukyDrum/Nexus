@@ -5,7 +5,10 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use crate::{KoolElement, language::Function};
+use crate::{
+    KoolElement,
+    language::{DuplexChannel, Function},
+};
 
 #[derive(Clone, Debug, Default)]
 pub enum Value {
@@ -22,6 +25,9 @@ pub enum Value {
     // Indexable
     Array(Arc<RwLock<Vec<Value>>>),
     HashMap(Arc<RwLock<HashMap<Value, Value>>>),
+    // Channels
+    /// This type cannot be created directly - it can only be created by a built-in function.
+    Channel(DuplexChannel),
 }
 
 impl Display for Value {
@@ -51,6 +57,7 @@ impl Display for Value {
 
                 write!(f, "}}")
             }
+            Value::Channel(_) => write!(f, "<Channel>"),
         }
     }
 }
