@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{borrow::Cow, collections::HashMap, process::Command};
 
 use hyprs::events::sync::HyprlandEvents;
 use serde_json::Value as JsonValue;
@@ -8,7 +8,10 @@ use crate::language::{
 };
 
 pub(super) fn hyprland_library() -> Library {
-    Library::from([("events", events_function())])
+    Library::from([
+        ("events", events_function()),
+        ("focusWorkspace", focus_workspace_function()),
+    ])
 }
 
 fn events_function() -> Function {
@@ -62,4 +65,36 @@ fn events_function() -> Function {
         code: FunctionCode::new_host(events_impl),
         closure: None,
     }
+}
+
+fn focus_workspace_function() -> Function {
+    const TAIL_PARAM: &str = "tail";
+
+    let params = FunctionParams::default().with_tail(TAIL_PARAM);
+    let focus_workspace_impl = |environment: &SharedEnvironment| -> Value {
+        let tail = environment.get_variable(TAIL_PARAM).unwrap_or_default();
+        let workspace = match &tail {
+            Value::String(string) => Cow::Borrowed(string.as_str()),
+            Value::Int(int) => Cow::Owned(int.to_string()),
+            _ => return Value::Null,
+        };
+
+        let dispatch = format!("hl.dsp.focus({{ workspace = \"{workspace}\" }})");
+        hyprctl_dispatch(&dispatch);
+
+        Value::Null
+    };
+
+    Function {
+        params,
+        code: FunctionCode::new_host(focus_workspace_impl),
+        closure: None,
+    }
+}
+
+fn hyprctl_dispatch(dispatch: &str) {
+    let _ = Command::new("hyprctl")
+        .arg("dispatch")
+        .arg(dispatch)
+        .spawn();
 }
