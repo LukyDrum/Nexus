@@ -1,8 +1,9 @@
+use serde::{Deserialize, Serialize};
 use std::{fmt::Display, num::ParseIntError};
 
 macro_rules! def_type {
     ($ident:ident, $backing:ty) => {
-        #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+        #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
         pub struct $ident($backing);
 
         impl $ident {

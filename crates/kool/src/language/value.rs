@@ -47,7 +47,7 @@ impl Display for Value {
                 write!(f, "]")
             }
             Value::Element(element) => write!(f, "<{}>", element.element_type()),
-            Value::Function(function) => write!(f, "func({:?})", &function.params),
+            Value::Function(function) => write!(f, "func({:?})", function.params),
             Value::HashMap(map) => {
                 write!(f, "{{")?;
 

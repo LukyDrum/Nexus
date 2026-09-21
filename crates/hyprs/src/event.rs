@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 use crate::types::{
     Floating, Fullscreen, IgnoreGroupLock, KeyboardName, LayoutName, LockGroups, Minimized,
     MonitorDescription, MonitorId, MonitorName, Namespace, PinState, ScreenCastName,
@@ -8,7 +10,7 @@ use crate::types::{
 const DELIMITER: &str = ">>";
 const DATA_SEPARATOR: char = ',';
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum HyprlandEvent {
     Workspace {
         name: WorkspaceName,

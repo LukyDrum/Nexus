@@ -1,4 +1,4 @@
-use hyprs::HyprlandEvents;
+use hyprs::events::tokio::HyprlandEvents;
 
 #[tokio::main]
 async fn main() {

@@ -1693,6 +1693,7 @@ checksum = "dfa686283ad6dd069f105e5ab091b04c62850d3e4cf5d67debad1933f55023df"
 name = "hyprs"
 version = "0.1.0"
 dependencies = [
+ "serde",
  "tokio",
 ]
 
@@ -2154,10 +2155,12 @@ dependencies = [
  "chrono",
  "clap",
  "crossbeam",
+ "hyprs",
  "iced",
  "iced_exwlshell",
  "koolctl",
  "mpris",
+ "serde_json",
  "strum",
  "thiserror 2.0.18",
  "zbus",

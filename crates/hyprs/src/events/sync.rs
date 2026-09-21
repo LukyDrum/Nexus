@@ -1,21 +1,11 @@
-use std::path::PathBuf;
+use std::{io::Read, os::unix::net::UnixStream, path::PathBuf};
 
-use tokio::{io::AsyncReadExt, net::UnixStream};
-
-use crate::{EventParseError, HyprlandEvent};
+use crate::{HyprlandEvent, events::HyprlandEventsError};
 
 const HIS_VAR: &str = "HYPRLAND_INSTANCE_SIGNATURE";
 const XDG_RUNTIME_DIR_VAR: &str = "XDG_RUNTIME_DIR";
 const HYPR_DIR: &str = "hypr";
 const SOCKET_2_NAME: &str = ".socket2.sock";
-
-#[derive(Debug)]
-pub enum HyprlandEventsError {
-    Io(std::io::Error),
-    EventParsing(EventParseError),
-    UnknownHis,
-    UnknownRuntimeDir,
-}
 
 pub struct HyprlandEvents {
     stream: UnixStream,
@@ -23,7 +13,7 @@ pub struct HyprlandEvents {
 }
 
 impl HyprlandEvents {
-    pub async fn new() -> Result<Self, HyprlandEventsError> {
+    pub fn new() -> Result<Self, HyprlandEventsError> {
         let his = std::env::var(HIS_VAR).map_err(|_| HyprlandEventsError::UnknownHis)?;
         let runtime_dir = std::env::var(XDG_RUNTIME_DIR_VAR)
             .map_err(|_| HyprlandEventsError::UnknownRuntimeDir)?;
@@ -32,9 +22,7 @@ impl HyprlandEvents {
             .join(his)
             .join(SOCKET_2_NAME);
 
-        let stream = UnixStream::connect(path)
-            .await
-            .map_err(HyprlandEventsError::Io)?;
+        let stream = UnixStream::connect(path).map_err(HyprlandEventsError::Io)?;
 
         Ok(Self {
             stream,
@@ -42,16 +30,10 @@ impl HyprlandEvents {
         })
     }
 
-    pub async fn read(&mut self) -> Result<Vec<HyprlandEvent>, HyprlandEventsError> {
-        self.stream
-            .readable()
-            .await
-            .map_err(HyprlandEventsError::Io)?;
-
+    pub fn read(&mut self) -> Result<Vec<HyprlandEvent>, HyprlandEventsError> {
         let n = self
             .stream
             .read(&mut self.buffer[..])
-            .await
             .map_err(HyprlandEventsError::Io)?;
         let read = &self.buffer[..n];
         let read = String::from_utf8_lossy(read);
