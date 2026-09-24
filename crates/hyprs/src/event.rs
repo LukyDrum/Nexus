@@ -11,6 +11,7 @@ const DELIMITER: &str = ">>";
 const DATA_SEPARATOR: char = ',';
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "event")]
 pub enum HyprlandEvent {
     Workspace {
         name: WorkspaceName,
