@@ -1,7 +1,11 @@
 use crate::language::{Function, FunctionCode, FunctionParams, Library, SharedEnvironment, Value};
 
 pub(super) fn collections_functions() -> Library {
-    Library::from([("map", map_function()), ("filter", filter_function())])
+    Library::from([
+        ("map", map_function()),
+        ("filter", filter_function()),
+        ("repeat", repeat_function()),
+    ])
 }
 
 /// Func is expected to have a tail parameter.
@@ -26,7 +30,7 @@ fn map_function() -> Function {
                     .iter()
                     .map(|value| {
                         let mut call_args = func.default_args();
-                        let _ = call_args.add_tail(value.clone());
+                        let _ = call_args.set_singular_arg(value.clone());
 
                         func.call(call_args).unwrap_or_default()
                     })
@@ -41,7 +45,7 @@ fn map_function() -> Function {
                     .iter()
                     .map(|(key, value)| {
                         let mut call_args = func.default_args();
-                        let _ = call_args.add_tail(value.clone());
+                        let _ = call_args.set_singular_arg(value.clone());
 
                         (key.clone(), func.call(call_args).unwrap_or_default())
                     })
@@ -82,7 +86,7 @@ fn filter_function() -> Function {
                     .iter()
                     .filter(|value| {
                         let mut call_args = func.default_args();
-                        let _ = call_args.add_tail((*value).clone());
+                        let _ = call_args.set_singular_arg((*value).clone());
 
                         func.call(call_args).unwrap_or_default().is_truthy()
                     })
@@ -98,7 +102,7 @@ fn filter_function() -> Function {
                     .iter()
                     .filter(|(_, value)| {
                         let mut call_args = func.default_args();
-                        let _ = call_args.add_tail((*value).clone());
+                        let _ = call_args.set_singular_arg((*value).clone());
 
                         func.call(call_args).unwrap_or_default().is_truthy()
                     })
@@ -114,6 +118,29 @@ fn filter_function() -> Function {
     Function {
         params,
         code: FunctionCode::new_host(filter_impl),
+        closure: None,
+    }
+}
+
+fn repeat_function() -> Function {
+    const VALUE_PARAM: &str = "value";
+    const TIMES_PARAM: &str = "times";
+
+    let params = FunctionParams::default()
+        .with_param(VALUE_PARAM, None)
+        .with_param(TIMES_PARAM, Some(Value::Int(1)));
+    let repeat_impl = |environment: &SharedEnvironment| -> Value {
+        let value = environment.get_variable(VALUE_PARAM).unwrap_or_default();
+        let Some(Value::Int(times)) = environment.get_variable(TIMES_PARAM) else {
+            return Value::Null;
+        };
+
+        Value::new_array(vec![value; times.max(0) as usize])
+    };
+
+    Function {
+        params,
+        code: FunctionCode::new_host(repeat_impl),
         closure: None,
     }
 }

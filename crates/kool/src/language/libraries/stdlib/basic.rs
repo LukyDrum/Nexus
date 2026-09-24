@@ -17,6 +17,7 @@ const MINUTES_IN_HOUR: u32 = 60;
 pub(super) fn basic_functions() -> Library {
     Library::from([
         ("print", print_function()),
+        ("clone", clone_function()),
         ("sum", sum_function()),
         ("exec", exec_function()),
         ("date_str", date_str_function()),
@@ -40,6 +41,30 @@ fn print_function() -> Function {
     Function {
         params,
         code: FunctionCode::new_host(print_impl),
+        closure: None,
+    }
+}
+
+fn clone_function() -> Function {
+    const TAIL_PARAM: &str = "tail";
+
+    let params = FunctionParams::default().with_tail(TAIL_PARAM);
+    let clone_impl = |environment: &SharedEnvironment| -> Value {
+        let tail = environment.get_variable(TAIL_PARAM).unwrap_or_default();
+
+        match tail {
+            Value::String(string) => Value::new_string(string.clone_inner()),
+            Value::Element(kool_element) => Value::new_element(kool_element.clone_inner()),
+            Value::Array(array) => Value::new_array(array.read().expect("Lock poisoned").clone()),
+            Value::HashMap(map) => Value::new_hash_map(map.read().expect("Lock poisoned").clone()),
+            // Other values can either be easily copied, or it makes no sense to clone them
+            value => value,
+        }
+    };
+
+    Function {
+        params,
+        code: FunctionCode::new_host(clone_impl),
         closure: None,
     }
 }
