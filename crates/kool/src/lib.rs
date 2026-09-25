@@ -1,3 +1,4 @@
+pub(crate) mod canvas;
 mod element;
 pub mod language;
 mod parsing;

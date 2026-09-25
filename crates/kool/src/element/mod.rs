@@ -5,6 +5,7 @@ use crate::{
 };
 
 mod button;
+mod canvas;
 mod column;
 mod common;
 mod container;
@@ -16,6 +17,7 @@ mod text;
 
 pub mod kool {
     pub use super::button::Button;
+    pub use super::canvas::Canvas;
     pub use super::column::Column;
     pub use super::container::Container;
     pub use super::error::Error;
@@ -46,6 +48,7 @@ pub trait Element<'a> {
 pub enum KoolElement {
     /* SPECIAL */
     Error(kool::Error),
+    Canvas(kool::Canvas),
 
     /* BASIC */
     Text(kool::Text),
@@ -63,6 +66,7 @@ impl KoolElement {
     pub fn build<'a>(&self, context: &BuildContext) -> iced::Element<'a, WidgetMessage> {
         match self {
             KoolElement::Error(error) => error.build(context).into(),
+            KoolElement::Canvas(canvas) => canvas.build(context).into(),
             KoolElement::Text(text) => text.build(context).into(),
             KoolElement::Container(container) => container.build(context).into(),
             KoolElement::Image(image) => image.build(context).into(),
@@ -76,6 +80,7 @@ impl KoolElement {
     pub fn element_type(&self) -> &'static str {
         match self {
             KoolElement::Error(_) => "Error",
+            KoolElement::Canvas(_) => "Canvas",
             KoolElement::Text(_) => "Text",
             KoolElement::Container(_) => "Container",
             KoolElement::Image(_) => "Image",
@@ -97,6 +102,7 @@ impl Eq for KoolElement {}
 pub fn element_library() -> Library {
     Library::from([
         kool::Error::kool_function(),
+        kool::Canvas::kool_function(),
         kool::Text::kool_function(),
         kool::Container::kool_function(),
         kool::Image::kool_function(),
