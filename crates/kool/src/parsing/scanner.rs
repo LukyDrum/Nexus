@@ -57,6 +57,7 @@ pub(super) fn scan(input: &str) -> Result<Vec<TokenWithMeta>, ScannerError> {
             '.' => Token::Dot,
             '+' => Token::Plus,
             '-' => Token::Minus,
+            '?' => Token::QuestionMark,
             '/' => {
                 if chars.next_if(|(_, c)| c.char == '/').is_some() {
                     while chars.next_if(|(_, c)| c.char != '\n').is_some() {}

@@ -493,7 +493,7 @@ fn addition(
 fn term(
     tokens: &mut Tokens<impl Iterator<Item = TokenWithMeta>>,
 ) -> Result<Expression, ParserError> {
-    let mut left = unary(tokens)?;
+    let mut left = if_null_operator(tokens)?;
 
     while tokens
         .peek()
@@ -503,12 +503,36 @@ fn term(
             break;
         };
         let operator = token_to_operator(token)?;
-        let right = unary(tokens)?;
+        let right = if_null_operator(tokens)?;
 
         left = Expression::Binary {
             left: Box::new(left),
             right: Box::new(right),
             operator,
+        };
+    }
+
+    Ok(left)
+}
+
+fn if_null_operator(
+    tokens: &mut Tokens<impl Iterator<Item = TokenWithMeta>>,
+) -> Result<Expression, ParserError> {
+    let mut left = unary(tokens)?;
+
+    while tokens
+        .peek()
+        .is_some_and(|TokenWithMeta { token, .. }| matches!(token, Token::QuestionMark))
+    {
+        let Some(_token) = tokens.next() else {
+            break;
+        };
+        let right = unary(tokens)?;
+
+        left = Expression::Binary {
+            left: Box::new(left),
+            right: Box::new(right),
+            operator: Operator::IfNull,
         };
     }
 

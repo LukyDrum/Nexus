@@ -60,6 +60,8 @@ pub enum Operator {
     LessEq,
     Greater,
     GreaterEq,
+    /* Special */
+    IfNull,
 }
 
 #[derive(Clone, Debug, thiserror::Error)]
@@ -240,6 +242,15 @@ impl Expression {
                     }
                     (Value::Int(left), Operator::GreaterEq, Value::Int(right)) => {
                         Value::Bool(left >= right)
+                    }
+
+                    // IfNull
+                    (left, Operator::IfNull, right) => {
+                        if left.is_null() {
+                            right
+                        } else {
+                            left
+                        }
                     }
 
                     // Other

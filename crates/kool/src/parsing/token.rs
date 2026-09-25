@@ -29,6 +29,7 @@ pub enum Token {
     GreaterEqual,   // >=
     And,            // &&
     Or,             // ||
+    QuestionMark,   // ?
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
