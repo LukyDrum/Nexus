@@ -5,6 +5,7 @@ pub(super) fn collections_functions() -> Library {
         ("map", map_function()),
         ("filter", filter_function()),
         ("repeat", repeat_function()),
+        ("enumerateMap", enumerate_map_function()),
     ])
 }
 
@@ -141,6 +142,48 @@ fn repeat_function() -> Function {
     Function {
         params,
         code: FunctionCode::new_host(repeat_impl),
+        closure: None,
+    }
+}
+
+// Expects a function and an array. The function should take a named `index` and named `value` parameter.
+fn enumerate_map_function() -> Function {
+    const TAIL_PARAM: &str = "tail";
+    const FUNC_PARAM: &str = "func";
+
+    const INDEX_PARAM: &str = "index";
+    const VALUE_PARAM: &str = "value";
+
+    let params = FunctionParams::default()
+        .with_param(FUNC_PARAM, None)
+        .with_tail(TAIL_PARAM);
+    let enumerate_map_impl = |environment: &SharedEnvironment| -> Value {
+        let Some(Value::Function(func)) = environment.get_variable(FUNC_PARAM) else {
+            return Value::Null;
+        };
+        let Some(Value::Array(array)) = environment.get_variable(TAIL_PARAM) else {
+            return Value::Null;
+        };
+        let read = array.read().expect("Lock poisoned");
+
+        let enumerated_mapped = read
+            .iter()
+            .enumerate()
+            .map(|(index, value)| {
+                let mut args = func.default_args();
+                let _ = args.set_arg(INDEX_PARAM, Value::Int(index as i64));
+                let _ = args.set_arg(VALUE_PARAM, value.clone());
+
+                func.call(args).unwrap_or_default()
+            })
+            .collect();
+
+        Value::new_array(enumerated_mapped)
+    };
+
+    Function {
+        params,
+        code: FunctionCode::new_host(enumerate_map_impl),
         closure: None,
     }
 }
