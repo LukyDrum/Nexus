@@ -1,12 +1,3 @@
-use crate::EventParseError;
-
 pub mod sync;
+#[cfg(feature = "tokio")]
 pub mod tokio;
-
-#[derive(Debug)]
-pub enum HyprlandEventsError {
-    Io(std::io::Error),
-    EventParsing(EventParseError),
-    UnknownHis,
-    UnknownRuntimeDir,
-}

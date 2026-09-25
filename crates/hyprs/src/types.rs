@@ -1,12 +1,27 @@
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, num::ParseIntError};
 
+pub(crate) trait HyprsType: Display {
+    const SELECTOR_PREFIX: &str = "";
+
+    fn as_selector(&self) -> String
+    where
+        Self: Display,
+    {
+        format!("{}{self}", Self::SELECTOR_PREFIX)
+    }
+}
+
 macro_rules! def_type {
     ($ident:ident, $backing:ty) => {
         #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
         pub struct $ident($backing);
 
         impl $ident {
+            pub fn new(inner: $backing) -> Self {
+                Self(inner)
+            }
+
             pub fn inner(&self) -> &$backing {
                 &self.0
             }
@@ -32,12 +47,19 @@ macro_rules! def_type {
 
 macro_rules! def_string_type {
     ($ident:ident) => {
+        def_string_type!($ident, prefix = "");
+    };
+    ($ident:ident, prefix = $prefix:literal) => {
         def_type!($ident, String);
 
         impl<'a> From<&'a str> for $ident {
             fn from(value: &'a str) -> Self {
                 Self(value.to_owned())
             }
+        }
+
+        impl HyprsType for $ident {
+            const SELECTOR_PREFIX: &str = $prefix;
         }
     };
 }
@@ -61,6 +83,8 @@ macro_rules! def_num_type {
                 value.as_str().try_into()
             }
         }
+
+        impl HyprsType for $ident {}
     };
 }
 
@@ -89,6 +113,8 @@ macro_rules! def_bool_type {
                 value.as_str().try_into()
             }
         }
+
+        impl HyprsType for $ident {}
     };
 }
 
@@ -102,9 +128,9 @@ def_num_type!(MonitorId);
 def_string_type!(MonitorDescription);
 
 /* Window related */
-def_string_type!(WindowClass);
-def_string_type!(WindowTitle);
-def_string_type!(WindowAddres);
+def_string_type!(WindowClass, prefix = "class:");
+def_string_type!(WindowTitle, prefix = "title:");
+def_string_type!(WindowAddres, prefix = "address:");
 
 /* Keyboard related */
 def_string_type!(KeyboardName);
@@ -126,3 +152,19 @@ def_bool_type!(IgnoreGroupLock);
 def_bool_type!(LockGroups);
 def_bool_type!(Minimized);
 def_bool_type!(PinState);
+
+/* Special types */
+
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub struct ActiveWindow;
+
+impl Display for ActiveWindow {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "activewindow")
+    }
+}
+impl HyprsType for ActiveWindow {
+    fn as_selector(&self) -> String {
+        self.to_string()
+    }
+}

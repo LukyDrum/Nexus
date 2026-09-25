@@ -1,9 +1,8 @@
-use hyprs::events::tokio::HyprlandEvents;
+use hyprs::events::sync::HyprlandEvents;
 
-#[tokio::main]
-async fn main() {
-    let mut events = HyprlandEvents::new().await.unwrap();
-    while let Ok(events) = events.read().await {
+fn main() {
+    let mut events = HyprlandEvents::new().unwrap();
+    while let Ok(events) = events.read() {
         for event in events {
             println!("{event:?}");
         }

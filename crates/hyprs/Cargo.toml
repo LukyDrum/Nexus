@@ -6,4 +6,7 @@ edition.workspace = true
 
 [dependencies]
 serde.workspace = true
-tokio.workspace = true
+tokio = { workspace = true, optional = true }
+
+[features]
+tokio = ["dep:tokio"]
