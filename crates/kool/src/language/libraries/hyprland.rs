@@ -1,10 +1,17 @@
-use std::{borrow::Cow, collections::HashMap, process::Command};
+use std::collections::HashMap;
 
-use hyprs::events::sync::HyprlandEvents;
+use hyprs::{
+    control::{ControlCommand, selectors::WorkspaceSelector, sync::ControlSocket},
+    events::sync::HyprlandEvents,
+    types::{WorkspaceId, WorkspaceName},
+};
 use serde_json::Value as JsonValue;
 
-use crate::language::{
-    DuplexChannel, Function, FunctionCode, FunctionParams, Library, SharedEnvironment, Value,
+use crate::{
+    language::{
+        DuplexChannel, Function, FunctionCode, FunctionParams, Library, SharedEnvironment, Value,
+    },
+    utils::CloneInner,
 };
 
 pub(super) fn hyprland_library() -> Library {
@@ -73,16 +80,20 @@ fn focus_workspace_function() -> Function {
     let params = FunctionParams::default().with_tail(TAIL_PARAM);
     let focus_workspace_impl = |environment: &SharedEnvironment| -> Value {
         let tail = environment.get_variable(TAIL_PARAM).unwrap_or_default();
-        let workspace = match &tail {
-            Value::String(string) => Cow::Borrowed(string.as_str()),
-            Value::Int(int) => Cow::Owned(int.to_string()),
+        let command = match &tail {
+            Value::String(name) => {
+                ControlCommand::Focus(WorkspaceSelector(WorkspaceName::new(name.clone_inner())))
+                    .parts()
+            }
+            Value::Int(id) => {
+                ControlCommand::Focus(WorkspaceSelector(WorkspaceId::new(*id as u32))).parts()
+            }
             _ => return Value::Null,
         };
 
-        let dispatch = format!("hl.dsp.focus({{ workspace = \"{workspace}\" }})");
-        hyprctl_dispatch(&dispatch);
+        let result = ControlSocket::send_command(&command).unwrap_or(false);
 
-        Value::Null
+        Value::Bool(result)
     };
 
     Function {
@@ -90,11 +101,4 @@ fn focus_workspace_function() -> Function {
         code: FunctionCode::new_host(focus_workspace_impl),
         closure: None,
     }
-}
-
-fn hyprctl_dispatch(dispatch: &str) {
-    let _ = Command::new("hyprctl")
-        .arg("dispatch")
-        .arg(dispatch)
-        .spawn();
 }
