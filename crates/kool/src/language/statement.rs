@@ -1,5 +1,9 @@
-use crate::language::{
-    EvaluationError, Expression, LibraryLoadError, Operator, SharedEnvironment, Value, load_library,
+use crate::{
+    language::{
+        EvaluationError, Expression, LibraryLoadError, Operator, SharedEnvironment, Value,
+        load_library,
+    },
+    utils::CloneInner,
 };
 
 #[derive(Clone, Debug)]
@@ -107,9 +111,15 @@ impl Statement {
                                 }
                             }
                             (Value::HashMap(map), key) => {
+                                let Value::String(key) = key else {
+                                    return Err(StatementExecutionError::ExpressionEvaluation(
+                                        EvaluationError::NonStringHashMapKey(key),
+                                    ));
+                                };
+
                                 map.write()
                                     .expect("Lock poisoned")
-                                    .insert(key, right_side_value.clone());
+                                    .insert(key.clone_inner(), right_side_value.clone());
 
                                 right_side_value
                             }

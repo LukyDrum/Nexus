@@ -56,7 +56,7 @@ fn events_function() -> Function {
                             _ => continue,
                         };
 
-                        map.insert(Value::new_string(key), value);
+                        map.insert(key, value);
                     }
 
                     let _ = events_channel.send(Value::new_hash_map(map));

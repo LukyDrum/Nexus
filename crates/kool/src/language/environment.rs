@@ -124,12 +124,7 @@ impl Environment {
 
     /// Imports `library` as a namespace into this environment.
     pub fn import_namespace(&mut self, name: String, library: Library) {
-        let library_values = library
-            .values
-            .into_iter()
-            .map(|(key, value)| (Value::new_string(key), value))
-            .collect();
-        let map = Value::new_hash_map(library_values);
+        let map = Value::new_hash_map(library.values);
 
         self.variables.insert(name, map);
     }

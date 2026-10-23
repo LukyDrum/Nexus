@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::str::FromStr;
 
 use iced_exwlshell::reexport::{Anchor as IcedShellAnchor, Layer as IcedShellLayer};
@@ -88,17 +87,7 @@ impl From<Value> for WidgetSettings {
         let Value::HashMap(value_map) = value else {
             return settings;
         };
-        let value_map = value_map.read().expect("Lock poisoned");
-        let map = value_map
-            .iter()
-            .filter_map(|(key, value)| {
-                if let Value::String(key) = key {
-                    Some((key.as_str(), value))
-                } else {
-                    None
-                }
-            })
-            .collect::<HashMap<_, _>>();
+        let map = value_map.read().expect("Lock poisoned");
 
         if let Some(anchors) = map.get("anchor") {
             let anchors = match anchors {

@@ -226,15 +226,9 @@ impl From<Value> for CommonStyle {
             return style;
         };
         let map = map.read().expect("Lock poisoned");
-        let map = map
+        let map: HashMap<String, &Value> = map
             .iter()
-            .filter_map(|(key, value)| {
-                if let Value::String(string) = key {
-                    Some((SimpleCase::new(string).to_string(), value))
-                } else {
-                    None
-                }
-            })
+            .map(|(key, value)| (SimpleCase::new(key).to_string(), value))
             .collect::<HashMap<_, _>>();
 
         if let Some(value) = map.get("background") {
@@ -301,13 +295,7 @@ impl From<Value> for CommonStyle {
             let map = map.read().expect("Lock poisoned");
             let map = map
                 .iter()
-                .filter_map(|(key, value)| {
-                    if let Value::String(string) = key {
-                        Some((SimpleCase::new(string).to_string(), value))
-                    } else {
-                        None
-                    }
-                })
+                .map(|(key, value)| (SimpleCase::new(key).to_string(), value))
                 .collect::<HashMap<_, _>>();
             let mut border = Border::default();
 

@@ -307,7 +307,7 @@ fn collect_track_info(player: &Player) -> Option<Value> {
         ("isPlaying", is_playing),
     ]
     .into_iter()
-    .map(|(key, value)| (Value::new_string(key), value))
+    .map(|(key, value)| (key.to_owned(), value))
     .collect();
 
     Some(Value::new_hash_map(map))

@@ -24,7 +24,7 @@ pub enum Value {
     Function(Arc<Function>),
     // Indexable
     Array(Arc<RwLock<Vec<Value>>>),
-    HashMap(Arc<RwLock<HashMap<Value, Value>>>),
+    HashMap(Arc<RwLock<HashMap<String, Value>>>),
     // Channels
     /// This type cannot be created directly - it can only be created by a built-in function.
     Channel(DuplexChannel),
@@ -124,7 +124,7 @@ impl Value {
         Self::Function(Arc::new(function))
     }
 
-    pub fn new_hash_map(map: HashMap<Value, Value>) -> Self {
+    pub fn new_hash_map(map: HashMap<String, Value>) -> Self {
         Self::HashMap(Arc::new(RwLock::new(map)))
     }
 }

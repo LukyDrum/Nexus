@@ -74,6 +74,8 @@ pub enum EvaluationError {
     IndexOutOfBounds { value: Value, index: usize },
     #[error("Only values of type function can be called: {0}")]
     NotCallable(Value),
+    #[error("Non string hash map key: {0}")]
+    NonStringHashMapKey(Value),
     #[error("Failed to execute block: {0:?}")]
     BlockExecution(Box<StatementExecutionError>),
     #[error("Expected a positive integer, found: {0}.")]
@@ -210,12 +212,17 @@ impl Expression {
                     }
 
                     // HashMap operations
-                    (Value::HashMap(map), Operator::Index, key) => map
-                        .read()
-                        .expect("Lock poisoned")
-                        .get(&key)
-                        .cloned()
-                        .unwrap_or_default(),
+                    (Value::HashMap(map), Operator::Index, key) => {
+                        let Value::String(key) = key else {
+                            return Err(EvaluationError::NonStringHashMapKey(key));
+                        };
+
+                        map.read()
+                            .expect("Lock poisoned")
+                            .get(&*key)
+                            .cloned()
+                            .unwrap_or_default()
+                    }
                     (Value::HashMap(left), Operator::Add, Value::HashMap(right)) => {
                         let mut joined = left.clone_inner();
                         joined.extend(
@@ -305,8 +312,12 @@ impl Expression {
             Expression::HashMap(key_value_pairs) => {
                 let mut map = HashMap::new();
                 for (key, value) in key_value_pairs {
-                    let key = key.evaluate_or_null(environment);
+                    let key = match key.evaluate_or_null(environment) {
+                        Value::String(key) => key.clone_inner(),
+                        value => return Err(EvaluationError::NonStringHashMapKey(value)),
+                    };
                     let value = value.evaluate_or_null(environment);
+
                     map.insert(key, value);
                 }
 

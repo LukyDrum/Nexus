@@ -294,7 +294,7 @@ fn current_time_value() -> Value {
     Value::new_hash_map(
         date_obj_values
             .into_iter()
-            .map(|(key, value)| (Value::new_string(key.to_owned()), value))
+            .map(|(key, value)| (key.to_owned(), value))
             .collect(),
     )
 }

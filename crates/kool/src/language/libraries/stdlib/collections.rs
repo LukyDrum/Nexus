@@ -1,4 +1,5 @@
 use crate::language::{Function, FunctionCode, FunctionParams, Library, SharedEnvironment, Value};
+use crate::utils::TryFromValue;
 
 pub(super) fn collections_functions() -> Library {
     Library::from([
@@ -6,6 +7,7 @@ pub(super) fn collections_functions() -> Library {
         ("filter", filter_function()),
         ("repeat", repeat_function()),
         ("enumerateMap", enumerate_map_function()),
+        ("insert", insert_function()),
     ])
 }
 
@@ -184,6 +186,56 @@ fn enumerate_map_function() -> Function {
     Function {
         params,
         code: FunctionCode::new_host(enumerate_map_impl),
+        closure: None,
+    }
+}
+
+/// Works for inserting values into an array or a hashmap.
+fn insert_function() -> Function {
+    const TAIL_PARAM: &str = "tail";
+    const VALUE_PARAM: &str = "value";
+    const KEY_PARAM: &str = "key";
+
+    let params = FunctionParams::default()
+        .with_param(VALUE_PARAM, None)
+        .with_param(KEY_PARAM, None)
+        .with_tail(TAIL_PARAM);
+    let insert_impl = |environment: &SharedEnvironment| -> Value {
+        let value = environment.get_variable(VALUE_PARAM).unwrap_or_default();
+        match environment.get_variable(TAIL_PARAM).unwrap_or_default() {
+            Value::Array(array) => {
+                let mut array = array.write().expect("Lock poisoned");
+                let maybe_index = environment
+                    .get_variable(KEY_PARAM)
+                    .and_then(usize::try_from_value);
+
+                if let Some(index) = maybe_index {
+                    array.insert(index, value);
+                } else {
+                    array.push(value);
+                }
+
+                Value::Null
+            }
+            Value::HashMap(map) => {
+                let mut map = map.write().expect("Lock poisoned");
+                let maybe_key = environment
+                    .get_variable(KEY_PARAM)
+                    .and_then(String::try_from_value);
+
+                if let Some(key) = maybe_key {
+                    map.insert(key, value).unwrap_or_default()
+                } else {
+                    Value::Null
+                }
+            }
+            _ => Value::Null,
+        }
+    };
+
+    Function {
+        params,
+        code: FunctionCode::new_host(insert_impl),
         closure: None,
     }
 }
