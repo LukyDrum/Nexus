@@ -3,11 +3,9 @@ use std::time::Duration;
 use chrono::{Datelike, Timelike};
 
 use crate::{
-    language::{
         DuplexChannel, Expression, Function, FunctionCode, FunctionParams, Library, Operator,
         SharedEnvironment, Value,
-    },
-    utils::CloneInner,
+    CloneInner,
 };
 
 const MILLIS_IN_SECONDS: u32 = 1000;
@@ -54,7 +52,6 @@ fn clone_function() -> Function {
 
         match tail {
             Value::String(string) => Value::new_string(string.clone_inner()),
-            Value::Element(kool_element) => Value::new_element(kool_element.clone_inner()),
             Value::Array(array) => Value::new_array(array.read().expect("Lock poisoned").clone()),
             Value::HashMap(map) => Value::new_hash_map(map.read().expect("Lock poisoned").clone()),
             // Other values can either be easily copied, or it makes no sense to clone them

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{language::Value, utils::CloneInner};
+use crate::{language::Value, CloneInner};
 
 pub trait TryFromValue: Sized {
     fn try_from_value(value: Value) -> Option<Self>;

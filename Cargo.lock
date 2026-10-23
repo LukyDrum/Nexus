@@ -2167,6 +2167,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "kool-lang"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "crossbeam",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "kool-libs"
+version = "0.1.0"
+
+[[package]]
 name = "koolctl"
 version = "0.1.0"
 dependencies = [

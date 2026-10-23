@@ -1,6 +1,6 @@
 use crossbeam::channel::{Receiver, RecvError, SendError, Sender, TryRecvError, unbounded};
 
-use crate::language::Value;
+use crate::Value;
 
 #[derive(Clone, Debug)]
 pub struct DuplexChannel {

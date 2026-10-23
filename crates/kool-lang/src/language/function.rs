@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt::Debug, sync::Arc};
 
-use crate::language::{
+use crate::{
     Environment, SharedEnvironment, StatementBlock, StatementExecutionError, Value,
 };
 

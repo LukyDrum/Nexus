@@ -1,17 +1,13 @@
-#![expect(
-    clippy::mutable_key_type,
-    reason = "we only hash values without interior mutability"
-)]
-
 mod channel;
 mod environment;
 mod expression;
 mod function;
 mod importer;
-pub mod libraries;
 mod library;
 mod statement;
 mod value;
+mod handle;
+mod stdlib;
 
 pub use channel::DuplexChannel;
 pub use environment::{Environment, SharedEnvironment};
@@ -21,3 +17,4 @@ pub use importer::{LibraryLoadError, load_library};
 pub use library::Library;
 pub use statement::{Statement, StatementBlock, StatementExecutionError};
 pub use value::Value;
+pub use handle::Handle;

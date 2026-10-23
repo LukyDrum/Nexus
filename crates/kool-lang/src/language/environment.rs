@@ -4,8 +4,8 @@ use std::{
 };
 
 use crate::{
-    language::{Library, Value},
-    utils::CloneInner,
+    Library, Value,
+    CloneInner,
 };
 
 #[derive(Clone, Debug, Default)]

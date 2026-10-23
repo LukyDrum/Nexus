@@ -1,5 +1,5 @@
 use crate::language::{Function, FunctionCode, FunctionParams, Library, SharedEnvironment, Value};
-use crate::utils::TryFromValue;
+use crate::TryFromValue;
 
 pub(super) fn collections_functions() -> Library {
     Library::from([

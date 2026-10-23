@@ -1,9 +1,7 @@
 use crate::{
-    language::{
         EvaluationError, Expression, LibraryLoadError, Operator, SharedEnvironment, Value,
         load_library,
-    },
-    utils::CloneInner,
+    CloneInner,
 };
 
 #[derive(Clone, Debug)]

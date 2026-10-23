@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::language::{Function, Value};
+use crate::{Function, Value};
 
 #[derive(Clone, Debug, Default)]
 pub struct Library {

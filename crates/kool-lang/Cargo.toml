@@ -1,0 +1,10 @@
+[package]
+name = "kool-lang"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+
+[dependencies]
+chrono.workspace = true
+crossbeam.workspace = true
+thiserror.workspace = true

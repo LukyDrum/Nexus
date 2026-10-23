@@ -6,8 +6,7 @@ use std::{
 };
 
 use crate::{
-    KoolElement,
-    language::{DuplexChannel, Function},
+    DuplexChannel, Function, Handle
 };
 
 #[derive(Clone, Debug, Default)]
@@ -17,10 +16,11 @@ pub enum Value {
     Null,
     Bool(bool),
     Int(i64),
+    /// A pointer-like type containing both a pointer and a generation.
+    Handle(Handle),
     // Pass by reference
     // Non-indexable
     String(Arc<String>),
-    Element(Arc<KoolElement>),
     Function(Arc<Function>),
     // Indexable
     Array(Arc<RwLock<Vec<Value>>>),
@@ -36,6 +36,7 @@ impl Display for Value {
             Value::Null => write!(f, "null"),
             Value::Bool(bool) => write!(f, "{bool}"),
             Value::Int(int) => write!(f, "{int}"),
+            Value::Handle(handle) => write!(f, "handle({handle})"),
             Value::String(string) => write!(f, "{string}"),
             Value::Array(array) => {
                 write!(f, "[")?;
@@ -46,7 +47,6 @@ impl Display for Value {
 
                 write!(f, "]")
             }
-            Value::Element(element) => write!(f, "<{}>", element.element_type()),
             Value::Function(function) => write!(f, "func({:?})", function.params),
             Value::HashMap(map) => {
                 write!(f, "{{")?;
@@ -66,13 +66,13 @@ impl PartialEq for Value {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Null, Self::Null) => true,
-            (Self::Bool(left), Self::Bool(right)) => left == right,
-            (Self::Int(left), Self::Int(right)) => left == right,
-            (Self::String(left), Self::String(right)) => left == right,
+            (Self::Bool(left), Self::Bool(right)) => *left == *right,
+            (Self::Int(left), Self::Int(right)) => *left == *right,
+            (Self::String(left), Self::String(right)) => &*left == &*right,
             (Self::Array(left), Self::Array(right)) => {
                 *left.read().expect("Lock poisoned") == *right.read().expect("Lock poisoned")
             }
-            (Self::Element(left), Self::Element(right)) => left == right,
+            (Self::Handle(left), Self::Handle(right)) => *left == *right,
             (Self::Function(left), Self::Function(right)) => left == right,
             (Self::HashMap(left), Self::HashMap(right)) => {
                 *left.read().expect("Lock poisoned") == *right.read().expect("Lock poisoned")
@@ -114,10 +114,6 @@ impl Value {
 
     pub fn new_array(array: Vec<Value>) -> Self {
         Self::Array(Arc::new(RwLock::new(array)))
-    }
-
-    pub fn new_element(element: KoolElement) -> Self {
-        Self::Element(Arc::new(element))
     }
 
     pub fn new_function(function: Function) -> Self {
